@@ -3,7 +3,7 @@
 """
 Created on Fri Aug 23 19:45:20 2013
 
-@author: dedalus
+@author: Jacopo Sabbatini
 """
 
 import argparse
