@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<simulations>
+
+<sym N="test">
+    <t>1-20</t> 
+    <p>-500</p>
+    <o>$JOB_NAME.$JOB_ID.$TASK_ID.stdout.log</o>
+    <cwd />
+</sym>
+
+</simulations>
