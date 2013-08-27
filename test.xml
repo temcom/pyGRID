@@ -6,6 +6,8 @@
     <p>-500</p>
     <o>$JOB_NAME.$JOB_ID.$TASK_ID.stdout.log</o>
     <cwd />
+    <exec> echo </exec>
+    <pre_code>test</pre_code>
 </sym>
 
 </simulations>

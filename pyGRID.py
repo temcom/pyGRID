@@ -17,7 +17,15 @@ def simulation(sym_element=None):
     sym.parse('-N {0}'.format(sym_element.get('N')))
     
     for child in sym_element:
-        sym.parse_and_add('-{0} {1}'.format(child.tag, child.text))
+        argument_value = child.text
+        if argument_value is not None:
+            argument_value = argument_value.strip(' \n\t')
+        if child.tag == 'exec':
+            sym.args.command = argument_value
+        elif child.tag == 'pre_code' or child.tag == 'post_code':
+            setattr(sym.args,child.tag,argument_value)
+        else:
+            sym.parse_and_add('-{0} {1}'.format(child.tag, argument_value))
         
     return sym
 
@@ -35,4 +43,6 @@ if args.simulation:
 else:
     for sym in root.findall('sym'):
         sim = simulation(sym)
+        filename = sim.args.N + '.sh'
+        sim.write_qsub_script(filename, echo = True)
         print sim.args
