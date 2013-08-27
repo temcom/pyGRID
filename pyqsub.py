@@ -193,7 +193,7 @@ class qsubOptions():
             if value == True:
                 value = ''
             
-            if option not in ['command', 'command_args', 'xterm_args', 'pre_code', 'post_code']:
+            if option not in ['command', 'command_args', 'xterm_args', 'code']:
                 if isinstance(value, list):
                     val = ' '.join(value)
                 else:
@@ -204,20 +204,14 @@ class qsubOptions():
         args = getattr(self.args, 'command_args', [])
         args = getattr(self.args, 'xterm_args', args)
 
-        if hasattr(self.args,'pre_code'):
+        if hasattr(self.args,'code'):
             buf.append(' ')
-            buf.append('# Pre command code inserted by pyGRID')
-            buf.append(self.args.pre_code)
+            buf.append('# Code inserted by pyGRID')
+            buf.append(self.args.code)
             buf.append(' ')
 
         if hasattr(self.args,'command'):
             buf.append(' '.join([self.args.command] + args))
-
-        if hasattr(self.args,'post_code'):
-            buf.append(' ')
-            buf.append('# Post command code inserted by pyGRID')
-            buf.append(self.args.post_code)
-            buf.append(' ')
 
         if echo: print '\n'.join(buf)
 
@@ -252,7 +246,7 @@ class qsubOptions():
             else:
                 val = str(value)
 
-            if option not in ['command', 'command_args', 'xterm_args', 'pre_code', 'post_code']:
+            if option not in ['command', 'command_args', 'xterm_args', 'code']:
                 options.append('-'+option +' '+val)
 
         args = getattr(self.args, 'command_args', [])
