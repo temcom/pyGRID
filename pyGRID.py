@@ -14,6 +14,14 @@ from numpy import linspace
 from xml.dom import minidom
 from pyqsub import qsubOptions
 
+_keywords = dict(parameter = 'parameter',
+                 parameters = 'parameters',
+                 par_name = 'name',
+                 par_inherit = 'inherit',
+                 code = 'code',
+                 root_element = 'simulations',
+                 sim_element = 'sim_element')
+
 def writeXMLFile(element,filename):
     rough_string = ET.tostring(element, 'utf-8')
     reparsed = minidom.parseString(rough_string)
@@ -25,8 +33,8 @@ def _parse_parameters(par_element = None):
     if par_element is None:
         return
     parameters = dict()
-    for parameter in par_element.findall('parameter'):
-        par_name = parameter.get('name')
+    for parameter in par_element.findall(_keywords['parameter']):
+        par_name = parameter.get(_keywords['par_name'])
         par_value = parameter.text.strip(' \n\t')
         par_value = par_value.split(':')
         if len(par_value) > 1:
@@ -51,19 +59,17 @@ class pyGRID:
             return
         self.sim.parse('-N {0}'.format(sim_element.get('N')))
         self.bashFilename = self.sim.args.N + '.sh'
-        par_element = sim_element.find('parameters')
+        par_element = sim_element.find(_keywords['parameter'])
         if par_element is not None:
             self.parameters = _parse_parameters(par_element)
         for child in sim_element:
-            if child.tag == 'parameters':
+            if child.tag == _keywords['parameter']:
                 continue
             argument_value = child.text
             if argument_value is not None:
                 argument_value = argument_value.strip(' \n\t')
-            if child.tag == 'exec':
-                self.sim.args.command = argument_value
-            elif child.tag == 'pre_code' or child.tag == 'post_code':
-                setattr(self.sim.args,child.tag,argument_value)
+            if child.tag == _keywords['code']:
+                self.sim.args.code = argument_value
             else:
                 self.sim.parse_and_add('-{0} {1}'.format(child.tag, argument_value))
     
@@ -104,12 +110,12 @@ args = parser.parse_args()
 tree = ET.parse(args.file)
 root = tree.getroot()
 if args.simulation:
-    sim_element = root.findall("./sim_element[@name='{0}']".format(args.simulation))
+    sim_element = root.findall("./"+ _keywords['sim_element'] +"[@name='{0}']".format(args.simulation))
     gridJob = pyGRID(sim_element = sim_element.pop())
     if args.submit:
         gridJob.submit()
 else:
-    for sim_element in root.findall('sim_element'):
+    for sim_element in root.findall(_keywords['sim_element']):
         gridJob = pyGRID(sim_element = sim_element)
         if args.submit:
             gridJob.submit()
