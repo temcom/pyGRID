@@ -158,6 +158,7 @@ class qsubOptions():
             self.parser.add_argument('xterm_args', nargs = '*')
 
         #END SGE OPTION PARSER
+        self.parse('echo')
     
     def parse(self, inputstring = ''):
         """Helper method: parses a string"""
