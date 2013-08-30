@@ -262,9 +262,13 @@ if args.simulation:
     gridJob = pyGRID(sim_element = matching_sim_element, parent_map = parent_map)
     if args.submit:
         gridJob.submit()
+    else:
+        gridJob.sim.write_qsub_script(gridJob.bashFilename)
 else:
     # otherwise we crate and submit all of them
     for sim_element in root.findall(_keywords['sim_element']):
         gridJob = pyGRID(sim_element = sim_element, parent_map = parent_map)
         if args.submit:
             gridJob.submit()
+        else:
+            gridJob.sim.write_qsub_script(gridJob.bashFilename)
