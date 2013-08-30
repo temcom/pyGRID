@@ -243,9 +243,9 @@ class pyGRID:
 
 # define the arguments for the python script
 parser = argparse.ArgumentParser()
-parser.add_argument("-f", "--file")
-parser.add_argument("-s", "--simulation")
-parser.add_argument("-b", "--submit", action='store_true')
+parser.add_argument("-f", "--file",help="Specify which file pyGRID should use to load definitions of the simulations")
+parser.add_argument("-s", "--simulation",help="The name of the simulation to use")
+parser.add_argument("-b", "--submit", action='store_true',help="If submit is specified then pyGRID will submit the job otherwise it will simply create the bash script")
 
 # parse the arguments from the command line
 args = parser.parse_args()
