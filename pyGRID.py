@@ -26,6 +26,21 @@ _keywords = dict(parameter = 'parameter',
                  sim_element = 'sim_element',
                  sim_name = 'N')
 
+def find_sim_element(root,sim_name):
+    try:
+        # searching elements in an xml tree by attributes is available only for
+        # Python 2.7+
+        return root.find("./"+ _keywords['sim_element'] 
+                    +"[@{0}='{1}']".format(_keywords['sim_name'],sim_name))
+    except SyntaxError:
+        # If the previous line failed then we have to search for element by looping
+        # over all the simulation elements
+        sim_elements = root.findall("./"+ _keywords['sim_element'])
+        for sim_element in sim_elements:
+            current_name = sim_element.get(_keywords['sim_name'])
+            if current_name == sim_name:
+                return sim_element
+
 def writeXMLFile(element,filename):
     """Utility method that takes an xml element and write it to a file with pretty
     printing.
@@ -152,15 +167,22 @@ class pyGRID:
             # simulation elements are always the children of the root element so we can
             # use the parent map to retrieve the root
             root_element = parent_map[sim_element]
-            parent_element = root_element.find("./"+ _keywords['sim_element'] +"[@{0}='{1}']".format(_keywords['sim_name'],inherit_from))
+            # parent_element = root_element.find("./"+ _keywords['sim_element'] +"[@{0}='{1}']".format(_keywords['sim_name'],inherit_from))
+            parent_element = find_sim_element(root_element,inherit_from)
             self._parse_element(parent_element)
         
         # parse the element
         self._parse_element(sim_element)
             
     def _generate_param_space(self):
-        """Generate all the possible combinations of the parameters for the job."""
-        return self.parameters.keys(), [x for x in apply(itertools.product, self.parameters.values())]
+        """Generate all the possible combinations of the parameters for the job.
+        Returns a list of parameters and list of all possible combinations of the
+        parameters values. If the job has no parameters then returns None for both.
+        """
+        if len(self.parameters) == 0:
+            return None,None
+        else:
+            return self.parameters.keys(), [x for x in apply(itertools.product, self.parameters.values())]
     
     def submit(self):
         """Submit a job to the queue manager for every possible combination of the
@@ -176,7 +198,7 @@ class pyGRID:
         jobs = ET.Element('jobs')
         
         params, combinations = self._generate_param_space()
-        if len(combinations) == 0:
+        if combinations is None:
             # if the simulation doesn't required parameters then self.parameters is empty
             # and results in an empty combinations array
             job = ET.Element('job')
@@ -187,7 +209,7 @@ class pyGRID:
             # submit the job to qsub
             execstring = "qsub -terse "+self.bashFilename
             p = subprocess.Popen(execstring, stdout = subprocess.PIPE, stderr = subprocess.STDOUT, shell = True)
-                
+            
             # retrieve the job_id and add it to the job xml element
             jobID = p.stdout.read().strip(' \n\t')
             job.set('id', jobID.split('.')[0])
@@ -235,8 +257,9 @@ parent_map = dict((c, p) for p in root.getiterator() for c in p)
 
 if args.simulation:
     # if the user requested a particular job we create it and submit it
-    matching_sim_elements = root.findall("./"+ _keywords['sim_element'] +"[@{0}='{1}']".format(_keywords['sim_name'],args.simulation))
-    gridJob = pyGRID(sim_element = matching_sim_elements.pop(), parent_map = parent_map)
+    # matching_sim_element = root.find("./"+ _keywords['sim_element'] +"[@{0}='{1}']".format(_keywords['sim_name'],args.simulation))
+    matching_sim_element = find_sim_element(root,args.simulation)
+    gridJob = pyGRID(sim_element = matching_sim_element, parent_map = parent_map)
     if args.submit:
         gridJob.submit()
 else:

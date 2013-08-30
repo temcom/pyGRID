@@ -1,0 +1,135 @@
+<?xml version="1.0"?>
+<!-- This is a basic example of how an instruction file for pyGRID should be structured -->
+
+<!-- 
+
+Brief Introduction
+
+The simulations tag is the root node enclosing everything else. The various jobs you want
+to submit and run on the cluster are defined withion sim_element tags. The syntax was 
+designed such that every option you could pass to qsub can be defined exactly in the same
+way inside a sim_element and will have the same effect. This prevents the user from having
+to learn a new syntax. 
+
+For a list of options available consult the man page of qsub.
+
+pyGRID extends the syntax of qsub with a couple of keywords discussed later.
+
+-->
+<simulations>
+
+
+<!-- 
+Every simulation to be sumbitted to the cluster is represented by a sim_element tag. 
+A pyGRID file can contain and define any number of simulations, even unrelated ones.
+
+The sim_element tag has the following attributes:
+
+   N        : Defines the name of the job to be submitted to the queue manager. This 
+              attribute is compulsory. 
+   inherit  : Defines a parent simulation from which the current sim_element inherits
+              attributes. An explanation of inheritance is avalaible later.
+              
+The name ( N ) of the job is the only qsub option that needs to be specified as an
+atrribute, all the other options are specified as elements inside the sim_element. This
+is because the name of a job is used by pyGRID as an identifier for the simulation and
+for inheritance.
+
+Inside the sim_element the user can define the properties to pass the cluster in order to
+run the simulation. pyGRID respects the naming of the qsub options so that a property for
+a job can be defined with the following syntax for example:
+
+<qsub_option_name> value_of_the_option_to_pass_to_qsub </qsub_option_name>
+
+qsub options that don't require values to be passed can be defined as empty or self-closing
+xml tags like:
+
+<qsub_option_name />
+
+pyGRID introduces a code tag to define the actions or simulations the user wants to run on
+the cluster. The text inside the code tag is simply pasted in a bash script passed to the
+queue manager along with the other properties defined for the job. The code element can 
+include any bash code of arbitrary length. For this reason it can be any combination of
+the following:
+1) any bash command
+2) the path of an executable to be run on the cluster
+3) any bash command to run a python or matlab script on the cluster, e.g. 
+   "/usr/local/bin/matlab -nojvm -nodisplay -r matlab_job"
+4) any amount of bash code to manipulate files, create or delete folders etc.
+
+-->
+
+<!-- Example 1 -->
+<sim_element N="basic">
+    <!-- This sim_element defines a simulation that is going to be submitted to the queue 
+	manager with the name "basic". -->
+	
+	<!-- All the simulation does is to write on the standard output the path of the
+	current directory at execution time, the bash command "pwd". -->
+	<code> pwd </code> 
+	
+	<!-- The "basic" simulation is an array of 5 jobs -->
+    <t>1-5</t> 
+</sim_element>
+
+<!-- Example 2 -->
+<sim_element N="parSpace" inherit="basic">
+	<!-- This sim_element defines a simulation that is going to be submitted to the queue 
+	manager with the name "parSpace". This simulation inherits from the "basic" simulation
+	which means that it has all the qsub options defined in "basic" and overwrites the 
+	ones that are redefined in "parSpace".
+	-->
+
+    <!-- Define the format for the output files from the queue manager. Note we use 
+    the same syntax we would use with qsub. -->
+    <o>$JOB_NAME.$JOB_ID.$TASK_ID</o>
+    
+    <!-- Define the interpreter for this job. -->
+    <S>/bin/bash</S>
+    
+    <!-- Specifies that the error stream should be merged with the standard stream 
+    output -->
+    <j>y</j>
+    
+    <!-- Run the job from the current directory. -->
+    <!-- Note that qsub options that don't require arguments can be declared as empty
+    or self-closing xml tags. -->
+    <cwd />
+    
+    <!-- This simulation writes to the standard output the value of two environment 
+    variables "omega" and "Amp". -->
+    <code>
+    echo $omega
+    echo $Amp 
+    </code>
+    
+    <!-- Parameters for this simulation. 
+    pyGRID extends the qsub syntax by introducing the paramaters options that let the 
+    user run simulations that explore a parameter space.
+    pyGRID will submit a job to the queue manager for every combination of the parameters
+    values.
+    
+    The parameters for the job are specified as a list of "parameter" xml elements.
+    -->
+    <parameters>
+    
+      <!-- A parameter element has the following attributes:
+      		name : the name of the parameter that is passed to the job as an environment
+      		       variables. This attribute is compulsory.
+      	   
+      	   The text inside the parameter element defines the possible values that such 
+      	   parameter can assume. The possible syntax to specify values are:
+      	   
+      	   startValue:stopValue  -  The parameter will be an array of 10 (default) numbers
+      	                            evenly spaced between startValue and stopValue
+      	   startValue:samples:stopValue  -  The parameter will be an array of length 
+      	                                    "samples" with entries evenly spaced between
+      	                                    startValue and stopValue
+      	   a b c d e ... - Explicit list of values
+      -->
+      <parameter name="omega"> 1:3:10 </parameter>
+      <parameter name="Amp"> 2.0 5.0 6.0 </parameter>
+    </parameters>
+</sim_element>
+
+</simulations>
