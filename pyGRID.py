@@ -25,6 +25,19 @@ _keywords = dict(parameter = 'parameter',
                  root_element = 'simulations',
                  sim_element = 'sim_element',
                  sim_name = 'N')
+                 
+# pyGRID_error_identifier = "pyGRID ERROR!"
+# error_handling_bash_code = '\n'\
+# 'function error_trap_handler()\n' \
+# '{\n' \
+# '        MYSELF="$0"              # equals to my script name\n' \
+# '        LASTLINE="$1"            # argument 1: last line of error occurence\n' \
+# '        LASTERR="$2"             # argument 2: error code of last command\n' \
+# '        echo "{0}"\n' \
+# '        echo "${MYSELF}: line ${LASTLINE}: exit status of last command: ${LASTERR}"\n' \
+# '}\n' \
+# '\n' \
+# 'trap \'error_trap_handler ${LINENO} $?\' ERR\n'.format(pyGRID_error_identifier)
 
 def find_sim_element(root,sim_name):
     try:
@@ -90,6 +103,12 @@ def _parse_parameters(par_element = None):
 class InvalidNameError(Exception):
     def __str__(self):
         return "The simulation element representing the job must have a name."
+        
+class InvalidSimulatioNameError(Exception):
+    def __init__(self, sim_name):
+        self.sim_name = sim_name
+    def __str__(self):
+        return "The file defines no job named {0}".format(self.sim_name)
 
 class pyGRID:
     
@@ -133,6 +152,7 @@ class pyGRID:
                 argument_value = argument_value.strip(' \n\t')
         
             if child.tag == _keywords['code']:
+#                 self.sim.args.code = error_handling_bash_code + '\n\n' + argument_value
                 self.sim.args.code = argument_value
             else:
                 if argument_value is not None:
@@ -259,6 +279,8 @@ if args.simulation:
     # if the user requested a particular job we create it and submit it
     # matching_sim_element = root.find("./"+ _keywords['sim_element'] +"[@{0}='{1}']".format(_keywords['sim_name'],args.simulation))
     matching_sim_element = find_sim_element(root,args.simulation)
+    if matching_sim_element is None:
+        raise InvalidSimulatioNameError(args.simulation)
     gridJob = pyGRID(sim_element = matching_sim_element, parent_map = parent_map)
     if args.submit:
         gridJob.submit()
