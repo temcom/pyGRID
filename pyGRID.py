@@ -26,18 +26,18 @@ _keywords = dict(parameter = 'parameter',
                  sim_element = 'sim_element',
                  sim_name = 'N')
                  
-# pyGRID_error_identifier = "pyGRID ERROR!"
-# error_handling_bash_code = '\n'\
-# 'function error_trap_handler()\n' \
-# '{\n' \
-# '        MYSELF="$0"              # equals to my script name\n' \
-# '        LASTLINE="$1"            # argument 1: last line of error occurence\n' \
-# '        LASTERR="$2"             # argument 2: error code of last command\n' \
-# '        echo "{0}"\n' \
-# '        echo "${MYSELF}: line ${LASTLINE}: exit status of last command: ${LASTERR}"\n' \
-# '}\n' \
-# '\n' \
-# 'trap \'error_trap_handler ${LINENO} $?\' ERR\n'.format(pyGRID_error_identifier)
+pyGRID_error_identifier = "pyGRID ERROR!"
+error_handling_bash_code = '\n'\
+'function error_trap_handler()\n' \
+'{{\n' \
+'        MYSELF="$0"              # equals to my script name\n' \
+'        LASTLINE="$1"            # argument 1: last line of error occurence\n' \
+'        LASTERR="$2"             # argument 2: error code of last command\n' \
+'        echo "{0}"\n' \
+'        echo "${{MYSELF}}: line ${{LASTLINE}}: exit status of last command: ${{LASTERR}}"\n' \
+'}}\n' \
+'\n' \
+'trap \'error_trap_handler ${{LINENO}} $?\' ERR\n'.format(pyGRID_error_identifier)
 
 def find_sim_element(root,sim_name):
     try:
@@ -152,8 +152,7 @@ class pyGRID:
                 argument_value = argument_value.strip(' \n\t')
         
             if child.tag == _keywords['code']:
-#                 self.sim.args.code = error_handling_bash_code + '\n\n' + argument_value
-                self.sim.args.code = argument_value
+                self.sim.args.code = error_handling_bash_code + '\n\n' + argument_value
             else:
                 if argument_value is not None:
                     self.sim.parse_and_add('-{0} {1}'.format(child.tag, argument_value))
