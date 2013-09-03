@@ -24,7 +24,10 @@ _keywords = dict(parameter = 'parameter',
                  code = 'code',
                  root_element = 'simulations',
                  sim_element = 'sim_element',
-                 sim_name = 'N')
+                 sim_name = 'N',
+                 job_name = '$JOB_NAME',
+                 job_id = '$JOB_ID',
+                 task_id = '$TASK_ID')
                  
 pyGRID_error_identifier = "pyGRID ERROR!"
 error_handling_bash_code = '\n'\
@@ -135,6 +138,7 @@ class pyGRID:
         self.sim.parse_and_add('-N {0}'.format(job_name))
         
         self.bashFilename = self.sim.args.N + '.sh'
+        self.auxilliaryFilename = self.sim.args.N + '.grid'
         
         # parse the parameters to pass to the job
         par_element = sim_element.find(_keywords['parameters'])
@@ -257,8 +261,68 @@ class pyGRID:
                 job.set('id', jobID.split('.')[0])
                 jobs.append(job)
         # write the xml file with the job IDs
-        writeXMLFile(jobs,self.sim.args.N+'.grid')
-            
+        writeXMLFile(jobs,self.auxilliaryFilename)
+        
+    def _generate_output_filename_templates(self):
+        """Generate the filename templates for the output and error stream from the 
+        options of the job.
+        """
+        if self.sim.args.o:
+            self.output_filename = self.sim.args.o
+        else:
+            self.output_filename = "$JOB_NAME.o$JOB_ID.$TASK_ID"
+        if self.sim.args.j == 'y':
+            return
+        if self.sim.args.e:
+            self.error_filename = self.sim.args.e
+        else:
+            self.error_filename = "$JOB_NAME.e$JOB_ID.$TASK_ID"
+    
+    def output_filename(self,job_name,job_id,task_id = None):
+        """Generate the filename for the output stream for a particular job
+        from the templates created from the job options passed at creation time.
+
+        Keyword arguments:
+        job_name -- The name of the job generating the output file
+        job_id   -- The id of the submitted job
+        task_id  -- The id of the particular task in the array. Can be none for non array
+                    jobs
+        """
+        if not hasattr(self,'output_filename'):
+            self._generate_output_filename_templates()
+        output_filename = self.output_filename.replace(_keywords['job_name'],job_name)
+        output_filename = output_filename.replace(_keywords['job_id'],str(job_id))
+        output_filename = output_filename.replace(_keywords['task_id'],str(task_id))
+        return output_filename
+        
+    def error_filename(self,job_name,job_id,task_id = None):
+        """Generate the filename for the error stream for a particular job
+        from the templates created from the job options passed at creation time.
+
+        Keyword arguments:
+        job_name -- The name of the job generating the output file
+        job_id   -- The id of the submitted job
+        task_id  -- The id of the particular task in the array. Can be none for non array
+                    jobs
+        """
+        if not hasattr(self,'output_filename'):
+            self._generate_output_filename_templates()
+        if not hasattr(self,'error_filename'):
+            return None
+        error_filename = self.error_filename.replace(_keywords['job_name'],job_name)
+        error_filename = error_filename.replace(_keywords['job_id'],str(job_id))
+        error_filename = error_filename.replace(_keywords['task_id'],str(task_id))
+        return error_filename
+        
+    def stream_filenames(self,job_name,job_id,task_id = None):
+        return self.output_filename(job_name,job_id,task_id = task_id), \
+             self.error_filename(job_name,job_id,task_id = task_id)
+    
+    def scan_crashed_jobs(self):
+        tree = ET.parse(self.auxilliaryFilename)
+        root = tree.getroot()
+        for job_element in root.findall('job'):
+        
 
 # define the arguments for the python script
 parser = argparse.ArgumentParser()
@@ -276,7 +340,6 @@ parent_map = dict((c, p) for p in root.getiterator() for c in p)
 
 if args.simulation:
     # if the user requested a particular job we create it and submit it
-    # matching_sim_element = root.find("./"+ _keywords['sim_element'] +"[@{0}='{1}']".format(_keywords['sim_name'],args.simulation))
     matching_sim_element = find_sim_element(root,args.simulation)
     if matching_sim_element is None:
         raise InvalidSimulatioNameError(args.simulation)
