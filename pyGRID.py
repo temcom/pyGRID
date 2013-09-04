@@ -135,7 +135,7 @@ class pyGRID:
     def __str__(self):
         return '{0}\nParameters: {1}'.format(str(self.sim.args), str(self.parameters))
 
-    def _parse_element(self, sim_element=None):
+    def _parse_element(self, sim_element=None, parent_map=None):
         """Parse the children of the simulation element and insert them as arguments
         of the cluster job.
 
@@ -145,6 +145,18 @@ class pyGRID:
         """
         if sim_element is None:
             return
+        
+        # check if the simulation element inherits from another sim_element
+        inherit_from = sim_element.get(_keywords['par_inherit'])
+        if inherit_from and parent_map:
+            # parse the options from the parent element first
+            
+            # simulation elements are always the children of the root element so we can
+            # use the parent map to retrieve the root
+            root_element = parent_map[sim_element]
+            # parent_element = root_element.find("./"+ _keywords['sim_element'] +"[@{0}='{1}']".format(_keywords['sim_name'],inherit_from))
+            parent_element = find_sim_element(root_element,inherit_from)
+            self._parse_element(parent_element,parent_map)
         
         # the name of the job is expressed as an attribute of the xml element so we deal
         # with it differently 
@@ -199,20 +211,8 @@ class pyGRID:
         if sim_element is None:
             return
         
-        # check if the simulation element inherits from another sim_element
-        inherit_from = sim_element.get(_keywords['par_inherit'])
-        if inherit_from and parent_map:
-            # parse the options from the parent element first
-            
-            # simulation elements are always the children of the root element so we can
-            # use the parent map to retrieve the root
-            root_element = parent_map[sim_element]
-            # parent_element = root_element.find("./"+ _keywords['sim_element'] +"[@{0}='{1}']".format(_keywords['sim_name'],inherit_from))
-            parent_element = find_sim_element(root_element,inherit_from)
-            self._parse_element(parent_element)
-        
         # parse the element
-        self._parse_element(sim_element)
+        self._parse_element(sim_element,parent_map)
             
     def _generate_param_space(self):
         """Generate all the possible combinations of the parameters for the job.
