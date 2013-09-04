@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<simulations>
+
+<sim_element N="crashTest" inherit="basic">
+    <o>$JOB_NAME.$JOB_ID.$TASK_ID</o>
+    <t>1-5</t> 
+    <S>/bin/bash</S>
+    <j>y</j>
+    <cwd />
+    <code>
+    echo $omega
+    echo $Amp
+    
+    ambarabacicci 
+    </code>
+    <parameters>
+      <parameter name="omega"> 1:3:10 </parameter>
+      <parameter name="Amp"> 2.0 5.0 6.0 </parameter>
+    </parameters>
+</sim_element>
+
+</simulations>
