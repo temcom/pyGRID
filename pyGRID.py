@@ -18,7 +18,7 @@ from pyqsub import qsubOptions
 # global dictionary to map the syntax of the xml to the internal representation
 # This is useful in the case we want to change the syntax since we only need to change
 # the corresponding mapping string here and not in the rest of the code
-_grid_file_kw = dict(parameter = 'parameter',
+grid_file_kw = dict(parameter = 'parameter',
                 parameters = 'parameters',
                 par_name = 'name',
                 par_inherit = 'inherit',
@@ -27,11 +27,11 @@ _grid_file_kw = dict(parameter = 'parameter',
                 sim_element = 'sim_element',
                 sim_name = 'N')
 
-_file_template_kw = dict(job_name = '$JOB_NAME',
+file_template_kw = dict(job_name = '$JOB_NAME',
                          job_id = '$JOB_ID',
                          task_id = '$TASK_ID')
 
-_aux_file_kw = dict(root = 'jobs',
+aux_file_kw = dict(root = 'jobs',
                     job = 'job',
                     name = 'name',
                     array = 'array',
@@ -58,14 +58,14 @@ def find_sim_element(root,sim_name):
     try:
         # searching elements in an xml tree by attributes is available only for
         # Python 2.7+
-        return root.find("./"+ _grid_file_kw['sim_element'] 
-                    +"[@{0}='{1}']".format(_grid_file_kw['sim_name'],sim_name))
+        return root.find("./"+ grid_file_kw['sim_element'] 
+                    +"[@{0}='{1}']".format(grid_file_kw['sim_name'],sim_name))
     except SyntaxError:
         # If the previous line failed then we have to search for element by looping
         # over all the simulation elements
-        sim_elements = root.findall("./"+ _grid_file_kw['sim_element'])
+        sim_elements = root.findall("./"+ grid_file_kw['sim_element'])
         for sim_element in sim_elements:
-            current_name = sim_element.get(_grid_file_kw['sim_name'])
+            current_name = sim_element.get(grid_file_kw['sim_name'])
             if current_name == sim_name:
                 return sim_element
 
@@ -83,6 +83,23 @@ def writeXMLFile(element,filename):
     text_file.write(reparsed.toprettyxml())
     text_file.close()
 
+def parse_array_notation(array_string):
+    """Parse a string defining an array of jobs and return an array of integers
+    containing the TASK_IDs of the jobs. For the notation of an array job see qsub 
+    man page.
+
+    Keyword arguments:
+    array_string -- The string defining the array job
+    """
+    pieces = re.split("-|:",array_string)
+    if len(pieces) == 1:
+        return int(pieces[0])
+    if len(pieces) == 2:
+        return range(int(pieces[0]),int(pieces[1])+1)
+    if len(pieces) == 3:
+        return range(int(pieces[0]),int(pieces[1])+1,int(pieces[2]))
+    return []
+
 def _substitute_in_templates(filename_template,**kwargs):
     """Create a real filename by substituting the arguments in a template filename
 
@@ -90,7 +107,7 @@ def _substitute_in_templates(filename_template,**kwargs):
     filename_template -- The string template to generate the filename
     """
     for k,v in kwargs: 
-        filename_template = filename_template.replace(_file_template_kw[k],v)
+        filename_template = filename_template.replace(file_template_kw[k],v)
     return filename_template
 
 def _parse_parameters(par_element = None):
@@ -107,8 +124,8 @@ def _parse_parameters(par_element = None):
     if par_element is None:
         return parameters
         
-    for parameter in par_element.findall(_grid_file_kw['parameter']):
-        par_name = parameter.get(_grid_file_kw['par_name'])
+    for parameter in par_element.findall(grid_file_kw['parameter']):
+        par_name = parameter.get(grid_file_kw['par_name'])
         par_value = parameter.text.strip(' \n\t')
         par_value = par_value.split(':')
         if len(par_value) > 1:
@@ -122,7 +139,7 @@ def _parse_parameters(par_element = None):
         else:
             # the parameter values was specified as a list of numbers
             par_value = par_value[0].split()
-        parameters[par_name] = par_value
+        parameters[par_name] = [float(x) for x in par_value]
     return parameters
 
 class InvalidNameError(Exception):
@@ -152,7 +169,7 @@ class pyGRID:
             return
         
         # check if the simulation element inherits from another sim_element
-        inherit_from = sim_element.get(_grid_file_kw['par_inherit'])
+        inherit_from = sim_element.get(grid_file_kw['par_inherit'])
         if inherit_from and parent_map:
             # parse the options from the parent element first
             
@@ -164,7 +181,7 @@ class pyGRID:
         
         # the name of the job is expressed as an attribute of the xml element so we deal
         # with it differently 
-        job_name = sim_element.get(_grid_file_kw['sim_name'])
+        job_name = sim_element.get(grid_file_kw['sim_name'])
         if (job_name is None) or (len(job_name) == 0):
             raise InvalidNameError
         self.sim.parse_and_add('-N {0}'.format(job_name))
@@ -173,21 +190,21 @@ class pyGRID:
         self.auxilliaryFilename = self.sim.args.N + '.' + auxilliary_file_extension
         
         # parse the parameters to pass to the job
-        par_element = sim_element.find(_grid_file_kw['parameters'])
+        par_element = sim_element.find(grid_file_kw['parameters'])
         if par_element is not None:
             self.parameters = _parse_parameters(par_element)
         
         # parse the remaining qsub options
         for child in sim_element:
         
-            if child.tag == _grid_file_kw['parameters']:
+            if child.tag == grid_file_kw['parameters']:
                 continue
         
             argument_value = child.text
             if argument_value is not None:
                 argument_value = argument_value.strip(' \n\t')
         
-            if child.tag == _grid_file_kw['code']:
+            if child.tag == grid_file_kw['code']:
                 self.sim.args.code = error_handling_bash_code + '\n\n' + argument_value
             else:
                 if argument_value is not None:
@@ -237,10 +254,10 @@ class pyGRID:
                           for the job
         array_string   -- a string for submitting an array job
         """
-        job = ET.Element(_aux_file_kw['job'])
-        job.set(_aux_file_kw['name'],self.sim.args.N)
+        job = ET.Element(aux_file_kw['job'])
+        job.set(aux_file_kw['name'],self.sim.args.N)
         if self.sim.args.t is not None:
-            job.set(_aux_file_kw['array'],self.sim.args.t)
+            job.set(aux_file_kw['array'],self.sim.args.t)
             
         execstring = ['qsub', '-terse']
         if parameter_list:
@@ -261,7 +278,7 @@ class pyGRID:
                 
         # retrieve the job_id and add it to the job xml element
         jobID = p.stdout.read().strip(' \n\t')
-        job.set(_aux_file_kw['id'], jobID.split('.')[0])
+        job.set(aux_file_kw['id'], jobID.split('.')[0])
         return job
     
     def submit(self):
@@ -274,7 +291,7 @@ class pyGRID:
         self.sim.write_qsub_script(self.bashFilename)
         
         # Root element for the xml holding the information about job submission IDs
-        jobs = ET.Element(_aux_file_kw['root'])
+        jobs = ET.Element(aux_file_kw['root'])
         
         params, combinations = self._generate_param_space()
         if combinations is None:
@@ -354,22 +371,22 @@ class pyGRID:
         """
         tree = ET.parse(self.auxilliaryFilename)
         root = tree.getroot()
-        for job_element in root.findall(_aux_file_kw['job']):
-            if _aux_file_kw['array'] in job_element.attrib.keys():
-                array_indices = self._parse_array_notation(job_element.get(_aux_file_kw['array']))
+        for job_element in root.findall(aux_file_kw['job']):
+            if aux_file_kw['array'] in job_element.attrib.keys():
+                array_indices = self.parse_array_notation(job_element.get(aux_file_kw['array']))
                 crash_indices = []
                 for index in array_indices:
-                    if self.search_stream_for_error(job_element.get(_aux_file_kw['name']),
-                              job_element.get(_aux_file_kw['id']),task_id = index):
+                    if self.search_stream_for_error(job_element.get(aux_file_kw['name']),
+                              job_element.get(aux_file_kw['id']),task_id = index):
                         crash_indices.append(index)
                 if len(crash_indices):
-                    crashes_element = ET.Element(_aux_file_kw['crashes'])
+                    crashes_element = ET.Element(aux_file_kw['crashes'])
                     crashes_element.text = ' '.join(str(i) for i in crash_indices)
                     job_element.append(crashes_element)
             else:
-                if self.search_stream_for_error(job_element.get(_aux_file_kw['name']),
-                          job_element.get(_aux_file_kw['id'])):
-                    job_element.append(ET.Element(_aux_file_kw['crashes']))
+                if self.search_stream_for_error(job_element.get(aux_file_kw['name']),
+                          job_element.get(aux_file_kw['id'])):
+                    job_element.append(ET.Element(aux_file_kw['crashes']))
         tree.write(self.auxilliaryFilename)
         
     def search_stream_for_error(self,job_name,job_id,task_id = None):
@@ -402,23 +419,6 @@ class pyGRID:
                 print "The stream file {0} for the job does not exists".format(error)
         return False
     
-    def _parse_array_notation(self,array_string):
-        """Parse a string defining an array of jobs and return an array of integers
-        containing the TASK_IDs of the jobs. For the notation of an array job see qsub 
-        man page.
-
-        Keyword arguments:
-        array_string -- The string defining the array job
-        """
-        pieces = re.split("-|:",array_string)
-        if len(pieces) == 1:
-            return int(pieces[0])
-        if len(pieces) == 2:
-            return range(int(pieces[0]),int(pieces[1])+1)
-        if len(pieces) == 3:
-            return range(int(pieces[0]),int(pieces[1])+1,int(pieces[2]))
-        return []
-    
     def resubmit_crashed(self):
         self.scan_crashed_jobs()
         
@@ -427,16 +427,16 @@ class pyGRID:
         
         tree = ET.parse(self.auxilliaryFilename)
         root = tree.getroot()
-        for job_element in root.findall(_aux_file_kw['job']):
-            crash_element = job_element.find(_aux_file_kw['crashes'])
+        for job_element in root.findall(aux_file_kw['job']):
+            crash_element = job_element.find(aux_file_kw['crashes'])
             if crash_element is None:
                 continue
             crashed_indices = crash_element.text.split()
             
             parameters = job_element.attrib
-            parameters.pop(_aux_file_kw['name'],None)
-            parameters.pop(_aux_file_kw['id'],None)
-            parameters.pop(_aux_file_kw['array'],None)
+            parameters.pop(aux_file_kw['name'],None)
+            parameters.pop(aux_file_kw['id'],None)
+            parameters.pop(aux_file_kw['array'],None)
             
             if len(crased_indices) == 0:
                 # if there are no crashed indices it means the job wasn't an array job so
@@ -454,46 +454,35 @@ class pyGRID:
                     root.append(new_job_element) 
         
 
-# define the arguments for the python script
-parser = argparse.ArgumentParser()
-parser.add_argument("-f", "--file",help="Specify which file pyGRID should use to load definitions of the simulations")
+if __name__ == '__main__':
+    # define the arguments for the python script
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-f", "--file",help="Specify which file pyGRID should use to load definitions of the simulations")
+    
+    simulation_group = parser.add_mutually_exclusive_group()
+    simulation_group.add_argument("-s", "--simulation",help="The name of the simulation to use")
+    simulation_group.add_argument("-a", "--all",action='store_true',help="pyGRID will apply the actions specified to every simulation defined in the xml file")
+    
+    action_group = parser.add_mutually_exclusive_group()
+    action_group.add_argument("-w", "--write",action='store_true',help="If write is specified then pyGRID will create the bash script in the current directory")
+    action_group.add_argument("-b", "--submit",action='store_true',help="If submit is specified then pyGRID will submit the job otherwise it will simply create the bash script")
+    action_group.add_argument("-c", "--crashes",action='store_true',help="pyGRID will scan the stream files for a job and determine the ones that crashed")
+    action_group.add_argument("-r", "--resubmit",action='store_true',help="pyGRID will resubmit the crashed jobs parsed from stream files")
 
-simulation_group = parser.add_mutually_exclusive_group()
-simulation_group.add_argument("-s", "--simulation",help="The name of the simulation to use")
-simulation_group.add_argument("-a", "--all",action='store_true',help="pyGRID will apply the actions specified to every simulation defined in the xml file")
+    # parse the arguments from the command line
+    args = parser.parse_args()
 
-action_group = parser.add_mutually_exclusive_group()
-action_group.add_argument("-w", "--write",action='store_true',help="If write is specified then pyGRID will create the bash script in the current directory")
-action_group.add_argument("-b", "--submit",action='store_true',help="If submit is specified then pyGRID will submit the job otherwise it will simply create the bash script")
-action_group.add_argument("-c", "--crashes",action='store_true',help="pyGRID will scan the stream files for a job and determine the ones that crashed")
-action_group.add_argument("-r", "--resubmit",action='store_true',help="pyGRID will resubmit the crashed jobs parsed from stream files")
-
-# parse the arguments from the command line
-args = parser.parse_args()
-
-# read the xml file, parse it and create the parent map 
-tree = ET.parse(args.file)
-root = tree.getroot()
-parent_map = dict((c, p) for p in root.getiterator() for c in p)
-
-if args.simulation:
-    # if the user requested a particular job we create it and submit it
-    matching_sim_element = find_sim_element(root,args.simulation)
-    if matching_sim_element is None:
-        raise InvalidSimulatioNameError(args.simulation)
-    gridJob = pyGRID(sim_element = matching_sim_element, parent_map = parent_map)
-    if args.submit:
-        gridJob.submit()
-    if args.write:
-        gridJob.sim.write_qsub_script(gridJob.bashFilename)
-    if args.crashes:
-        gridJob.scan_crashed_jobs()
-    if args.resubmit:
-        gridJob.resubmit_crashed()
-if args.all:
-    # we create job objects for every simulation in the xml file
-    for sim_element in root.findall(_grid_file_kw['sim_element']):
-        gridJob = pyGRID(sim_element = sim_element, parent_map = parent_map)
+    # read the xml file, parse it and create the parent map 
+    tree = ET.parse(args.file)
+    root = tree.getroot()
+    parent_map = dict((c, p) for p in root.getiterator() for c in p)
+    
+    if args.simulation:
+        # if the user requested a particular job we create it and submit it
+        matching_sim_element = find_sim_element(root,args.simulation)
+        if matching_sim_element is None:
+            raise InvalidSimulatioNameError(args.simulation)
+        gridJob = pyGRID(sim_element = matching_sim_element, parent_map = parent_map)
         if args.submit:
             gridJob.submit()
         if args.write:
@@ -502,3 +491,15 @@ if args.all:
             gridJob.scan_crashed_jobs()
         if args.resubmit:
             gridJob.resubmit_crashed()
+    if args.all:
+        # we create job objects for every simulation in the xml file
+        for sim_element in root.findall(grid_file_kw['sim_element']):
+            gridJob = pyGRID(sim_element = sim_element, parent_map = parent_map)
+            if args.submit:
+                gridJob.submit()
+            if args.write:
+                gridJob.sim.write_qsub_script(gridJob.bashFilename)
+            if args.crashes:
+                gridJob.scan_crashed_jobs()
+            if args.resubmit:
+                gridJob.resubmit_crashed()

@@ -12,12 +12,12 @@
 </sim_element>
 
 <sim_element N="inheritanceTest" inherit="basicTest">
-    <code>
-    echo "Inheritance Test"
-    </code>
+    <!-- Basic inheritance test -->
+    <t>1-10</t>
 </sim_element>
 
 <sim_element N="parSpaceTest" inherit="basicTest">
+    <!-- Exploration of the parameter space test -->
     <code>
     echo "Parameter space test"
     echo $omega
@@ -30,6 +30,7 @@
 </sim_element>
 
 <sim_element N="crashTest" inherit="parSpaceTest">
+    <!-- Job crash detection test -->
     <code>
     echo $omega
     echo $Amp

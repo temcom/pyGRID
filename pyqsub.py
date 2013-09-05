@@ -215,10 +215,11 @@ class qsubOptions():
             buf.append(' '.join([self.args.command] + args))
 
         if echo: print '\n'.join(buf)
-
-        f = open(filename, 'w')
-        f.write('\n'.join(buf))
-        f.close()
+        
+        if filename is not None:
+            f = open(filename, 'w')
+            f.write('\n'.join(buf))
+            f.close()
 
 
 
