@@ -14,7 +14,7 @@ class TestPyGRID(unittest.TestCase):
         sim_element = find_sim_element(self.root,'basicTest')
         sim_name = sim_element.get(grid_file_kw['sim_name'])
         self.assertEqual( sim_name, 'basicTest' )
-        self.assertEqual( len(list(sim_element)), 6)
+        self.assertEqual( len(list(sim_element)), 7)
         
     def test_basic_init(self):
         sim_element = find_sim_element(self.root,'basicTest')
@@ -24,7 +24,6 @@ class TestPyGRID(unittest.TestCase):
         self.assertEqual(gridJob.sim.args.command, 'echo')
         self.assertTrue(gridJob.sim.args.cwd)
         self.assertEqual(gridJob.sim.args.j, 'y')
-        self.assertEqual(gridJob.sim.args.t, '1-5')
         self.assertEqual(gridJob.sim.args.o, '$JOB_NAME.$JOB_ID.$TASK_ID')
         
     def test_code_option(self):
