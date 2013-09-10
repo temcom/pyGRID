@@ -4,7 +4,8 @@
 <sim_element N="basicTest">
     <!-- Basic definition of job. used for minimal tests and tests of inheritance -->
 	<code> echo "Basic Test" </code> 
-    <t>1-5</t>
+    <M>sabbatini@physics.uq.edu.au</M>
+    <m>e s</m>
     <o>$JOB_NAME.$JOB_ID.$TASK_ID</o>
     <S>/bin/bash</S>
     <j>y</j>

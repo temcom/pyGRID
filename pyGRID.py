@@ -256,7 +256,7 @@ class pyGRID:
         """
         job = ET.Element(aux_file_kw['job'])
         job.set(aux_file_kw['name'],self.sim.args.N)
-        if self.sim.args.t is not None:
+        if hasattr(self.sim.args,'t'):
             job.set(aux_file_kw['array'],self.sim.args.t)
             
         execstring = ['qsub', '-terse']
@@ -464,10 +464,10 @@ if __name__ == '__main__':
     simulation_group.add_argument("-a", "--all",action='store_true',help="pyGRID will apply the actions specified to every simulation defined in the xml file")
     
     action_group = parser.add_mutually_exclusive_group()
-    action_group.add_argument("-w", "--write",action='store_true',help="If write is specified then pyGRID will create the bash script in the current directory")
-    action_group.add_argument("-b", "--submit",action='store_true',help="If submit is specified then pyGRID will submit the job otherwise it will simply create the bash script")
-    action_group.add_argument("-c", "--crashes",action='store_true',help="pyGRID will scan the stream files for a job and determine the ones that crashed")
-    action_group.add_argument("-r", "--resubmit",action='store_true',help="pyGRID will resubmit the crashed jobs parsed from stream files")
+    action_group.add_argument("-w","--write",action='store_true',help="If write is specified then pyGRID will create the bash script in the current directory")
+    action_group.add_argument("-b","--submit",action='store_true',help="If submit is specified then pyGRID will submit the job otherwise it will simply create the bash script")
+    action_group.add_argument("-c","--crashes",action='store_true',help="pyGRID will scan the stream files for a job and determine the ones that crashed")
+    action_group.add_argument("-r","--resubmit",action='store_true',help="pyGRID will resubmit the crashed jobs parsed from stream files")
 
     # parse the arguments from the command line
     args = parser.parse_args()
