@@ -9,6 +9,11 @@ to the command line or to a script file.
 """
 
 import argparse
+from itertools import chain, combinations
+
+def all_string_combinations(ss):
+  lists = chain(*map(lambda x: combinations(ss, x), range(1, len(ss)+1)))
+  return [''.join(x) for x in lists]
 
 class qsubOptions():
     "A data type meant to collect qsub options. See man qsub for information"
@@ -86,7 +91,8 @@ class qsubOptions():
             self.parser.add_argument('-l', metavar = 'keywords')
         if prog in ['qsub', 'qsh', 'qrsh', 'qlogin', 'qalter']:
             #TODO check if multiple arguments are parsed correctly
-            self.parser.add_argument('-m', nargs = '+', choices = 'beasn')
+            choices = all_string_combinations('beasn')
+            self.parser.add_argument('-m', nargs='+', choices = choices)
         if prog in ['qsub', 'qsh', 'qrsh', 'qlogin', 'qalter']:
             self.parser.add_argument('-M', metavar = 'user[@host]')
         if prog in ['qsub', 'qsh', 'qrsh', 'qlogin', 'qalter']:

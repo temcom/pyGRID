@@ -5,7 +5,7 @@
     <!-- Basic definition of job. used for minimal tests and tests of inheritance -->
 	<code> echo "Basic Test" </code> 
     <M>sabbatini@physics.uq.edu.au</M>
-    <m>e s</m>
+    <m>es</m>
     <o>$JOB_NAME.$JOB_ID.$TASK_ID</o>
     <S>/bin/bash</S>
     <j>y</j>
