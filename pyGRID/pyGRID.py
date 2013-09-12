@@ -27,15 +27,11 @@ grid_file_kw = dict(parameter = 'parameter',
                 sim_element = 'sim_element',
                 sim_name = 'N')
 
-file_template_kw = dict(job_name = '$JOB_NAME',
-                         job_id = '$JOB_ID',
-                         task_id = '$TASK_ID')
-
 aux_file_kw = dict(root = 'jobs',
                     job = 'job',
-                    name = 'name',
+                    name = 'JOB_NAME',
+                    id = 'JOB_ID',
                     array = 'array',
-                    id = 'id',
                     chrashes = 'crashes')
 
 bash_file_extension = 'sh'                 
@@ -100,15 +96,32 @@ def parse_array_notation(array_string):
         return range(int(pieces[0]),int(pieces[1])+1,int(pieces[2]))
     return []
 
-def _substitute_in_templates(filename_template,**kwargs):
+def _substitute_in_templates(filename_template,substitution_dict):
     """Create a real filename by substituting the arguments in a template filename
 
     Keyword arguments:
     filename_template -- The string template to generate the filename
+    substitution_dict -- a dictionary containing the keywords to substitute as keys and
+                         the values to substitute them with as values
     """
-    for k,v in kwargs: 
-        filename_template = filename_template.replace(file_template_kw[k],v)
+    for k,v in substitution_dict.iteritems(): 
+        filename_template = filename_template.replace(k,v)
     return filename_template
+
+def _parse_parameter_value(par_value):
+    par_value = par_value.split(':')
+    if len(par_value) > 1:
+        # the parameter range was specified in the format start:stop or start:samples:stop
+        startValue = float(par_value[0])
+        stopValue = float(par_value[-1])
+        samples = 10
+        if len(par_value) == 3:
+            samples = int(par_value[1])                
+        par_value = linspace(startValue, stopValue, samples)
+    else:
+        # the parameter values was specified as a list of numbers
+        par_value = par_value[0].split()
+    return [float(x) for x in par_value]
 
 def _parse_parameters(par_element = None):
     """Parse the children of the parameter element and return a dictionary with the
@@ -127,19 +140,7 @@ def _parse_parameters(par_element = None):
     for parameter in par_element.findall(grid_file_kw['parameter']):
         par_name = parameter.get(grid_file_kw['par_name'])
         par_value = parameter.text.strip(' \n\t')
-        par_value = par_value.split(':')
-        if len(par_value) > 1:
-            # the parameter range was specified in the format start:stop or start:samples:stop
-            startValue = float(par_value[0])
-            stopValue = float(par_value[-1])
-            samples = 10
-            if len(par_value) == 3:
-                samples = int(par_value[1])                
-            par_value = linspace(startValue, stopValue, samples)
-        else:
-            # the parameter values was specified as a list of numbers
-            par_value = par_value[0].split()
-        parameters[par_name] = [float(x) for x in par_value]
+        parameters[par_name] = _parse_parameter_value(par_value)
     return parameters
 
 class InvalidNameError(Exception):
@@ -206,6 +207,12 @@ class pyGRID:
         
             if child.tag == grid_file_kw['code']:
                 self.sim.args.code = error_handling_bash_code + '\n\n' + argument_value
+            elif child.tag == 't':
+                self.array = argument_value
+            elif child.tag == 'o':
+                setattr(self,'output_filename_template',argument_value)
+            elif child.tag == 'e':
+                setattr(self,'error_filename_template',argument_value)
             else:
                 if argument_value is not None:
                     self.sim.parse_and_add('-{0} {1}'.format(child.tag, argument_value))
@@ -227,6 +234,8 @@ class pyGRID:
         """
         self.sim = qsubOptions()
         self.parameters = dict()
+        self.output_filename_template = "$JOB_NAME.o$JOB_ID.$TASK_ID"
+        self.error_filename_template = "$JOB_NAME.o$JOB_ID.$TASK_ID"
         
         if sim_element is None:
             return
@@ -256,20 +265,29 @@ class pyGRID:
         """
         job = ET.Element(aux_file_kw['job'])
         job.set(aux_file_kw['name'],self.sim.args.N)
-        if hasattr(self.sim.args,'t'):
-            job.set(aux_file_kw['array'],self.sim.args.t)
-            
+        
+        output_filename = self.output_filename_template
+        error_filename = self.error_filename_template
+        
         execstring = ['qsub', '-terse']
         if parameter_list:
             param_string = []
+            substitution_dict = dict()
             for pair in parameter_list:
                 param_string.append('='.join(str(x) for x in pair))
                 job.set(str(pair[0]),str(pair[1]))
+                substitution_dict['$'+str(pair[0])] = str(pair[1])
             param_string = ','.join(param_string)
             execstring.extend(['-v',param_string])
- 
+            output_filename = _substitute_in_templates(output_filename,substitution_dict)
+            error_filename = _substitute_in_templates(error_filename,substitution_dict)
+        
+        execstring.extend(['-o', output_filename])
+        execstring.extend(['-e', error_filename])
+        
         if array_string:
-            execstring.extend('-t',array_string)
+            execstring.extend(['-t',array_string])
+            job.set(aux_file_kw['array'],array_string)
         
         execstring.append(self.bashFilename)
         execstring = ' '.join(execstring)
@@ -293,77 +311,19 @@ class pyGRID:
         # Root element for the xml holding the information about job submission IDs
         jobs = ET.Element(aux_file_kw['root'])
         
+        array_string = getattr(self,'array',None)
+        
         params, combinations = self._generate_param_space()
         if combinations is None:
-            job = self._submit_job()
+            job = self._submit_job(array_string = array_string)
             jobs.append(job)
         else:
             for c in combinations:
-                job = self._submit_job(parameter_list = zip(params,c))
+                job = self._submit_job(parameter_list = zip(params,c), 
+                                                            array_string = array_string)
                 jobs.append(job)
         # write the xml file with the job IDs
         writeXMLFile(jobs,self.auxilliaryFilename)
-        
-    def _generate_output_filename_templates(self):
-        """Generate the filename templates for the output and error stream from the 
-        options of the job.
-        """
-        if self.sim.args.o:
-            self.output_filename = self.sim.args.o
-        else:
-            self.output_filename = "$JOB_NAME.o$JOB_ID.$TASK_ID"
-        if self.sim.args.j == 'y':
-            return
-        if self.sim.args.e:
-            self.error_filename = self.sim.args.e
-        else:
-            self.error_filename = "$JOB_NAME.e$JOB_ID.$TASK_ID"
-    
-    def generate_output_filename(self,**kwargs):
-        """Generate the filename for the output stream for a particular job
-        from the templates created from the job options passed at creation time.
-
-        Keyword arguments:
-        job_name -- The name of the job generating the output file
-        job_id   -- The id of the submitted job
-        task_id  -- The id of the particular task in the array. Can be none for non array
-                    jobs
-        """
-        # first let's generate the template strings for the filenames
-        if not hasattr(self,'output_filename'):
-            self._generate_output_filename_templates()
-            
-        output_filename = self.output_filename
-        output_filename = _substitute_in_templates(output_filename, **kwargs)
-        return output_filename
-        
-    def generate_error_filename(self, **kwargs):
-        """Generate the filename for the error stream for a particular job
-        from the templates created from the job options passed at creation time.
-
-        Keyword arguments:
-        job_name -- The name of the job generating the output file
-        job_id   -- The id of the submitted job
-        task_id  -- The id of the particular task in the array. Can be none for non array
-                    jobs
-        """
-        
-        # first let's generate the template strings for the filenames
-        if not hasattr(self,'output_filename'):
-            self._generate_output_filename_templates()
-            
-        # if the job specifies to merge the output and stream error there is no template
-        # for the error_filename and we don't need to generate one
-        if not hasattr(self,'error_filename'):
-            return None
-        
-        error_filename = self.error_filename
-        error_filename = _substitute_in_templates(error_filename, **kwargs)
-        return error_filename
-        
-    def generate_stream_filenames(self, **kwargs):
-        return self.generate_output_filename( **kwargs ), \
-             self.generate_error_filename( **kwargs )
     
     def scan_crashed_jobs(self):
         """Loads the auxiliary file for this job, generate the filenames for the streams
@@ -372,57 +332,56 @@ class pyGRID:
         tree = ET.parse(self.auxilliaryFilename)
         root = tree.getroot()
         for job_element in root.findall(aux_file_kw['job']):
-            if aux_file_kw['array'] in job_element.attrib.keys():
-                array_indices = self.parse_array_notation(job_element.get(aux_file_kw['array']))
-                crash_indices = []
-                for index in array_indices:
-                    if self.search_stream_for_error(job_element.get(aux_file_kw['name']),
-                              job_element.get(aux_file_kw['id']),task_id = index):
-                        crash_indices.append(index)
-                if len(crash_indices):
-                    crashes_element = ET.Element(aux_file_kw['crashes'])
+            crashed, crash_indices = self.search_strem_for_error(job_element.attrib)
+            if crashed:
+                crashes_element = ET.Element(aux_file_kw['crashes'])
+                if crash_indices is not None:
                     crashes_element.text = ' '.join(str(i) for i in crash_indices)
-                    job_element.append(crashes_element)
-            else:
-                if self.search_stream_for_error(job_element.get(aux_file_kw['name']),
-                          job_element.get(aux_file_kw['id'])):
-                    job_element.append(ET.Element(aux_file_kw['crashes']))
+                job_element.append(crashes_element)       
         tree.write(self.auxilliaryFilename)
         
-    def search_stream_for_error(self,job_name,job_id,task_id = None):
+    def search_stream_for_error(self,job_attributes):
         """Search the stream files of job defined by the arguments for errors and return
         True if any is encountered
 
         Keyword arguments:
-        job_name -- The name of the job generating the output file
-        job_id   -- The id of the submitted job
-        task_id  -- The id of the particular task in the array. Can be none for non array
-                    jobs
+        job_attributes -- a dictionary of attributes defining the job
         """
-        output, error = self.generate_stream_filenames(job_name = job_name,
-                                                       job_id = job_id,
-                                                       task_id = task_id)
+        array_string = job_attributes.pop(aux_file_kw['array'],None)
+        keywords = ['$'+str(x) for x in job_attributes.keys()]
+        
+        output = _substitute_in_templates(self.output_filename_template,
+                                             dict(zip(keywords,job_attributes.values())))
+        error = _substitute_in_templates(self.error_filename_template,
+                                             dict(zip(keywords,job_attributes.values())))
+        if array_string is not None:
+            array_indices = parse_array_notation(array_string)
+            crash_indices = []
+            for index in array_indices:
+                task_output = _substitute_in_templates(output,{'$TASK_ID':str(index)})
+                task_error = _substitute_in_templates(error,{'$TASK_ID':str(index)})
+                if (self._search_file_for_error(task_output) or self._search_file_for_error(task_error)):
+                    crash_indices.append(index)
+            if len(crash_indices):
+                return True, crash_indices
+        else:
+            return (self._search_file_for_error(output) or 
+                                                self._search_file_for_error(error)), None
+        return False, None
+    
+    def _search_file_for_error(self, filename):
         try:
-            with open(output, "r") as output_file:
+            with open(filename, "r") as output_file:
                 output_string = output_file.read()
                 if pyGRID_error_identifier in output_string:
                     return True
         except IOError:
-            print "The stream file {0} for the job does not exists".format(output)
-        if error is not None:
-            try:
-                with open(error, "r") as error_file:
-                    error_string = error_file.read()
-                    if pyGRID_error_identifier in error_string:
-                        return True
-            except IOError:
-                print "The stream file {0} for the job does not exists".format(error)
+            print "The stream file {0} for the job does not exists".format(filename)
         return False
     
     def resubmit_crashed(self):
         self.scan_crashed_jobs()
         
-        delattr(self.sim.args,'t')
         self.sim.write_qsub_script(self.bashFilename)
         
         tree = ET.parse(self.auxilliaryFilename)
@@ -454,7 +413,7 @@ class pyGRID:
                     root.append(new_job_element) 
         
 
-if __name__ == '__main__':
+def main():
     # define the arguments for the python script
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--file",help="Specify which file pyGRID should use to load definitions of the simulations")

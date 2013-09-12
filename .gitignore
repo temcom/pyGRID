@@ -1,3 +1,5 @@
 *.pyc
 *.sh
 *.grid
+*.egg-info
+dist/
