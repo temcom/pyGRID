@@ -281,9 +281,10 @@ class pyGRID:
             execstring.extend(['-v',param_string])
             output_filename = _substitute_in_templates(output_filename,substitution_dict)
             error_filename = _substitute_in_templates(error_filename,substitution_dict)
-        
-        execstring.extend(['-o', output_filename])
-        execstring.extend(['-e', error_filename])
+
+        self.sim.args.o = output_filename
+        self.sim.args.e = error_filename  
+        self.sim.write_qsub_script(self.bashFilename)      
         
         if array_string:
             execstring.extend(['-t',array_string])
@@ -305,8 +306,6 @@ class pyGRID:
         the queue manager for every job submitted with the list of the parameters passed
         and the array information.
         """
-        # create the bash script first
-        self.sim.write_qsub_script(self.bashFilename)
         
         # Root element for the xml holding the information about job submission IDs
         jobs = ET.Element(aux_file_kw['root'])
@@ -324,6 +323,12 @@ class pyGRID:
                 jobs.append(job)
         # write the xml file with the job IDs
         writeXMLFile(jobs,self.auxilliaryFilename)
+        
+        # create the bash script without reference to the output/error filenames so that
+        # the user can use it
+        delattr(self.sim.args,'o')
+        delattr(self.sim.args,'e')
+        self.sim.write_qsub_script(self.bashFilename)
     
     def scan_crashed_jobs(self):
         """Loads the auxiliary file for this job, generate the filenames for the streams
