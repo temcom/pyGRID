@@ -25,7 +25,7 @@
     echo $Amp 
     </code>
     <t>1-10</t>
-    <o>$JOB_NAME.$JOB_ID.$omega</o>
+    <o>$JOB_NAME.$JOB_ID.$PAR_omega</o>
     <parameters>
       <parameter name="omega"> 1:3:10 </parameter>
       <parameter name="Amp"> 2.0 5.0 6.0 </parameter>

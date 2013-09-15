@@ -34,6 +34,8 @@ aux_file_kw = dict(root = 'jobs',
                     array = 'array',
                     chrashes = 'crashes')
 
+filename_prefixes = dict(parameters = 'PAR')
+
 bash_file_extension = 'sh'                 
 auxilliary_file_extension = 'grid'
 
@@ -276,7 +278,7 @@ class pyGRID:
             for pair in parameter_list:
                 param_string.append('='.join(str(x) for x in pair))
                 job.set(str(pair[0]),str(pair[1]))
-                substitution_dict['$'+str(pair[0])] = str(pair[1])
+                substitution_dict['$'+filename_prefixes['parameters']+'_'+str(pair[0])] = str(pair[1])
             param_string = ','.join(param_string)
             execstring.extend(['-v',param_string])
             output_filename = _substitute_in_templates(output_filename,substitution_dict)
