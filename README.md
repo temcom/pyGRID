@@ -39,7 +39,21 @@ pyGRID accepts the path of an xml file as input and the name of simulation defin
 * create an auxilliary xml file, with extentsion `.grid`, holding the properties of a submitted job
 * detect crashed jobs and resubmit them
 
-The syntax for the xml file used by pyGRID is documented in the `pyGRID/examples/basicExample.xml` file in the repository but in short pyGRID conforms to the syntax used by `qsub` to specify job options.
+The syntax for the xml file used by pyGRID is documented in `pyGRID/examples/basicExample.xml` but in short pyGRID conforms to the syntax used by `qsub` to specify job options.
+
+pyGRID command line options can be divided in three groups:
+* XML file option. This option is *Required*.
+    * `-f`, specifies the path of the file to load.
+* Simulation options. These are mutually *exlusive* and at least one is *Required*.
+    * `-s`, specifies the name of the simulation to load from the XML file.
+    * `-a`, loads all the simulations in the file.
+* Action options. Tell pyGRID which action to perform woth the specified simulation. These are mutually *exclusive*.
+    * `-w`, write the shell script for the simulation. 
+    * `-b`, write the shell script and submit a job for every combination of the parameters of the simulation
+    * `-c`, scan the output sctream of finished jobs and detect the crashed ones. The `JOB_ID` and `TASK_ID` of the crashed job is saved in the `.grid` auxilliary file.    
+    * `-r`, resubmit crashed jobs.
+    
+To invoke the documentation for pyGRID command line option type `pyGRID --help`. 
 
 Tests
 -----
