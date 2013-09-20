@@ -66,6 +66,12 @@ In particular tests have to be written for:
 
 Both these tasks require some sort of system in place to emulate `qsub` and its responses.
 
+To run tests install `nose` through `pip install nose` and type
+```
+nosetests
+```
+in the repository main directory.
+
 TODO
 ----
 
