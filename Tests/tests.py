@@ -24,7 +24,6 @@ class TestPyGRID(unittest.TestCase):
         self.assertEqual(gridJob.sim.args.command, 'echo')
         self.assertTrue(gridJob.sim.args.cwd)
         self.assertEqual(gridJob.sim.args.j, 'y')
-        self.assertEqual(gridJob.sim.args.o, '$JOB_NAME.$JOB_ID.$TASK_ID')
         
     def test_code_option(self):
         sim_element = find_sim_element(self.root,'basicTest')
@@ -39,11 +38,9 @@ class TestPyGRID(unittest.TestCase):
         self.assertEqual(gridJob.sim.args.command, 'echo')
         self.assertTrue(gridJob.sim.args.cwd)
         self.assertEqual(gridJob.sim.args.j, 'y')
-        self.assertEqual(gridJob.sim.args.o, '$JOB_NAME.$JOB_ID.$TASK_ID')
         
         # the array and the name are the only properties we changed in the child job
         self.assertEqual(gridJob.sim.args.N, 'inheritanceTest')
-        self.assertEqual(gridJob.sim.args.t, '1-10')
     
     def test_parse_array_notation(self):
         self.assertEqual(parse_array_notation('5'), 5)
