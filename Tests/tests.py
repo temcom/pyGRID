@@ -1,5 +1,6 @@
 import unittest
 import xml.etree.ElementTree as ET
+import mock
 
 from pyGRID import *
 
@@ -61,6 +62,18 @@ class TestPyGRID(unittest.TestCase):
         self.assertEqual(combinations, [(2.0, 1.0), (2.0, 5.5), (2.0, 10.0), (5.0, 1.0), 
                                         (5.0, 5.5), (5.0, 10.0), (6.0, 1.0), (6.0, 5.5), 
                                         (6.0, 10.0)])
+    
+    @mock.patch('subprocess.Popen')
+    def test_basic_submission(self,fake_popen):
+        fake_popen().stdout.read.return_value = '4'
+        sim_element = find_sim_element(self.root,'basicTest')
+        gridJob = pyGRID(sim_element, self.parent_map)
+        gridJob.submit()
+        assert fake_popen.called
+        assert fake_popen.call_args[0][0] == 'qsub -terse basicTest.sh'
+        assert fake_popen.call_args[1]['shell'] == True
+        assert fake_popen.call_args[1]['stdout'] == subprocess.PIPE
+        assert fake_popen.call_args[1]['stderr'] == subprocess.STDOUT
 
 if __name__ == '__main__':
     unittest.main()
