@@ -4,6 +4,64 @@ import mock
 
 from pyGRID import *
 
+auxilliary_strings = dict(basicTest = '<?xml version="1.0" ?>\n'\
+                                      '<jobs>\n'\
+                                      '\t<job JOB_ID="4" JOB_NAME="basicTest"/>\n'\
+                                      '</jobs>\n')
+bash_strings = dict(basicTest_1 = '#!/usr/bin/env qsub\n'\
+                                  '# Written using pyGRID module\n'\
+                                  '#$ -e $JOB_NAME.o$JOB_ID.$TASK_ID\n'\
+                                  '#$ -m es\n'\
+                                  '#$ -j y\n'\
+                                  '#$ -M sabbatini@physics.uq.edu.au\n'\
+                                  '#$ -o $JOB_NAME.$JOB_ID.$TASK_ID\n'\
+                                  '#$ -N basicTest\n'\
+                                  '#$ -S /bin/bash\n'\
+                                  '#$ -cwd \n'\
+                                  ' \n'\
+                                  '# Code inserted by pyGRID\n'\
+                                  '\n'\
+                                  'function error_trap_handler()\n'\
+                                  '{\n'\
+                                  '        MYSELF="$0"              # equals to my script name\n'\
+                                  '        LASTLINE="$1"            # argument 1: last line of error occurence\n'\
+                                  '        LASTERR="$2"             # argument 2: error code of last command\n'\
+                                  '        echo "pyGRID ERROR!"\n'\
+                                  '        echo "${MYSELF}: line ${LASTLINE}: exit status of last command: ${LASTERR}"\n'\
+                                  '}\n'\
+                                  '\n'\
+                                  'trap \'error_trap_handler ${LINENO} $?\' ERR\n'\
+                                  '\n'\
+                                  '\n'\
+                                  'echo "Basic Test"\n'\
+                                  ' \n'\
+                                  'echo',
+                    basicTest_2 = '#!/usr/bin/env qsub\n'\
+                                  '# Written using pyGRID module\n'\
+                                  '#$ -m es\n'\
+                                  '#$ -j y\n'\
+                                  '#$ -M sabbatini@physics.uq.edu.au\n'\
+                                  '#$ -N basicTest\n'\
+                                  '#$ -S /bin/bash\n'\
+                                  '#$ -cwd \n \n'\
+                                  '# Code inserted by pyGRID\n'\
+                                  '\n'\
+                                  'function error_trap_handler()\n'\
+                                  '{\n'\
+                                  '        MYSELF="$0"              # equals to my script name\n'\
+                                  '        LASTLINE="$1"            # argument 1: last line of error occurence\n'\
+                                  '        LASTERR="$2"             # argument 2: error code of last command\n'\
+                                  '        echo "pyGRID ERROR!"\n'\
+                                  '        echo "${MYSELF}: line ${LASTLINE}: exit status of last command: ${LASTERR}"\n'\
+                                  '}\n'\
+                                  '\n'\
+                                  'trap \'error_trap_handler ${LINENO} $?\' ERR\n'\
+                                  '\n'\
+                                  '\n'\
+                                  'echo "Basic Test"\n'\
+                                  ' \n'\
+                                  'echo')
+
 class TestPyGRID(unittest.TestCase):
 
     def setUp(self):
@@ -68,12 +126,20 @@ class TestPyGRID(unittest.TestCase):
         fake_popen().stdout.read.return_value = '4'
         sim_element = find_sim_element(self.root,'basicTest')
         gridJob = pyGRID(sim_element, self.parent_map)
-        gridJob.submit()
-        assert fake_popen.called
-        assert fake_popen.call_args[0][0] == 'qsub -terse basicTest.sh'
-        assert fake_popen.call_args[1]['shell'] == True
-        assert fake_popen.call_args[1]['stdout'] == subprocess.PIPE
-        assert fake_popen.call_args[1]['stderr'] == subprocess.STDOUT
+        with mock.patch('__builtin__.open', mock.mock_open(), create=True) as fake_file:
+            gridJob.submit()
+            assert fake_popen.called
+            assert fake_popen.call_args[0][0] == 'qsub -terse basicTest.sh'
+            assert fake_popen.call_args[1]['shell'] == True
+            assert fake_popen.call_args[1]['stdout'] == subprocess.PIPE
+            assert fake_popen.call_args[1]['stderr'] == subprocess.STDOUT
+            
+            fake_file.assert_any_call('basicTest.sh', 'w')
+            fake_file.assert_any_call('basicTest.grid', 'w')
+            handle = fake_file()
+            handle.write.assert_any_call(auxilliary_strings['basicTest'])
+            handle.write.assert_any_call(bash_strings['basicTest_1']) 
+            handle.write.assert_any_call(bash_strings['basicTest_2'])
 
 if __name__ == '__main__':
     unittest.main()
