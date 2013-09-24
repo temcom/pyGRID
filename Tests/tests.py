@@ -7,7 +7,12 @@ from pyGRID import *
 auxilliary_strings = dict(basicTest = '<?xml version="1.0" ?>\n'\
                                       '<jobs>\n'\
                                       '\t<job JOB_ID="4" JOB_NAME="basicTest"/>\n'\
-                                      '</jobs>\n')
+                                      '</jobs>\n',
+                          inheritanceTest = '<?xml version="1.0" ?>\n'\
+                                            '<jobs>\n'\
+                                            '\t<job JOB_ID="4" JOB_NAME="inheritanceTest" array="1-10"/>\n'\
+                                            '</jobs>\n')
+                                      
 bash_strings = dict(basicTest_1 = '#!/usr/bin/env qsub\n'\
                                   '# Written using pyGRID module\n'\
                                   '#$ -e $JOB_NAME.o$JOB_ID.$TASK_ID\n'\
@@ -89,18 +94,6 @@ class TestPyGRID(unittest.TestCase):
         gridJob = pyGRID(sim_element, self.parent_map)
         self.assertTrue(error_handling_bash_code in gridJob.sim.args.code)
     
-    def test_inheritance(self):
-        sim_element = find_sim_element(self.root,'inheritanceTest')
-        gridJob = pyGRID(sim_element, self.parent_map)
-        # test that we inherited correctly the property of the parent job
-        self.assertEqual(gridJob.sim.args.S, '/bin/bash')
-        self.assertEqual(gridJob.sim.args.command, 'echo')
-        self.assertTrue(gridJob.sim.args.cwd)
-        self.assertEqual(gridJob.sim.args.j, 'y')
-        
-        # the array and the name are the only properties we changed in the child job
-        self.assertEqual(gridJob.sim.args.N, 'inheritanceTest')
-    
     def test_parse_array_notation(self):
         self.assertEqual(parse_array_notation('5'), 5)
         self.assertEqual(parse_array_notation('5-7'), [5, 6, 7])
@@ -140,6 +133,36 @@ class TestPyGRID(unittest.TestCase):
             handle.write.assert_any_call(auxilliary_strings['basicTest'])
             handle.write.assert_any_call(bash_strings['basicTest_1']) 
             handle.write.assert_any_call(bash_strings['basicTest_2'])
+    
+    def test_inheritance(self):
+        sim_element = find_sim_element(self.root,'inheritanceTest')
+        gridJob = pyGRID(sim_element, self.parent_map)
+        # test that we inherited correctly the property of the parent job
+        self.assertEqual(gridJob.sim.args.S, '/bin/bash')
+        self.assertEqual(gridJob.sim.args.command, 'echo')
+        self.assertTrue(gridJob.sim.args.cwd)
+        self.assertEqual(gridJob.sim.args.j, 'y')
+        
+        # the array and the name are the only properties we changed in the child job
+        self.assertEqual(gridJob.sim.args.N, 'inheritanceTest')
+        
+    @mock.patch('subprocess.Popen')
+    def test_inheritance_submission(self,fake_popen):
+        fake_popen().stdout.read.return_value = '4'
+        sim_element = find_sim_element(self.root,'inheritanceTest')
+        gridJob = pyGRID(sim_element, self.parent_map)
+        with mock.patch('__builtin__.open', mock.mock_open(), create=True) as fake_file:
+            gridJob.submit()
+            assert fake_popen.called
+            assert fake_popen.call_args[0][0] == 'qsub -terse -t 1-10 inheritanceTest.sh'
+            assert fake_popen.call_args[1]['shell'] == True
+            assert fake_popen.call_args[1]['stdout'] == subprocess.PIPE
+            assert fake_popen.call_args[1]['stderr'] == subprocess.STDOUT
+            
+            fake_file.assert_any_call('inheritanceTest.sh', 'w')
+            fake_file.assert_any_call('inheritanceTest.grid', 'w')
+            handle = fake_file()
+            handle.write.assert_any_call(auxilliary_strings['inheritanceTest'])
 
 if __name__ == '__main__':
     unittest.main()
