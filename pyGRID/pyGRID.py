@@ -237,7 +237,7 @@ class pyGRID:
         self.sim = qsubOptions()
         self.parameters = dict()
         self.output_filename_template = "$JOB_NAME.o$JOB_ID.$TASK_ID"
-        self.error_filename_template = "$JOB_NAME.o$JOB_ID.$TASK_ID"
+        self.error_filename_template = "$JOB_NAME.e$JOB_ID.$TASK_ID"
         
         if sim_element is None:
             return
@@ -367,19 +367,25 @@ class pyGRID:
                                              dict(zip(keywords,job_attributes.values())))
         error = _substitute_in_templates(self.error_filename_template,
                                              dict(zip(keywords,job_attributes.values())))
+        
         if array_string is not None:
             array_indices = parse_array_notation(array_string)
             crash_indices = []
             for index in array_indices:
                 task_output = _substitute_in_templates(output,{'$TASK_ID':str(index)})
                 task_error = _substitute_in_templates(error,{'$TASK_ID':str(index)})
-                if (self._search_file_for_error(task_output) or self._search_file_for_error(task_error)):
+                if self._search_file_for_error(task_output):
+                    crash_indices.append(index)
+                    continue
+                if not hasattr(self.sim.args,'j') and self._search_file_for_error(task_error):
                     crash_indices.append(index)
             if len(crash_indices):
                 return True, crash_indices
         else:
-            return (self._search_file_for_error(output) or 
-                                                self._search_file_for_error(error)), None
+            if self._search_file_for_error(task_output):
+                return True, None
+            if not hasattr(self.sim.args,'j') and self._search_file_for_error(task_error):
+                return True, None
         return False, None
     
     def _search_file_for_error(self, filename):
