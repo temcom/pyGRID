@@ -277,7 +277,7 @@ class pyGRID:
             substitution_dict = dict()
             for pair in parameter_list:
                 param_string.append('='.join(str(x) for x in pair))
-                job.set(str(pair[0]),str(pair[1]))
+                job.set('PAR_'+str(pair[0]),str(pair[1]))
                 substitution_dict['$'+filename_prefixes['parameters']+'_'+str(pair[0])] = str(pair[1])
             param_string = ','.join(param_string)
             execstring.extend(['-v',param_string])
@@ -332,20 +332,26 @@ class pyGRID:
         delattr(self.sim.args,'e')
         self.sim.write_qsub_script(self.bashFilename)
     
-    def scan_crashed_jobs(self):
+    def scan_crashed_jobs(self, filepath = None):
         """Loads the auxiliary file for this job, generate the filenames for the streams
         and check them for runtime errors.
+        
+        Keyword arguments:
+        filepath -- the path of file from which to parse the list of jobs in case it has 
+                    been renamed from pyGRID default. If None the pyGRID default is used
         """
-        tree = ET.parse(self.auxilliaryFilename)
-        root = tree.getroot()
+        if filepath is None:
+            filepath = self.auxilliaryFilename
+        file_string = open(filepath,'r').read()
+        root = ET.fromstring(file_string)
         for job_element in root.findall(aux_file_kw['job']):
-            crashed, crash_indices = self.search_strem_for_error(job_element.attrib)
+            crashed, crash_indices = self.search_stream_for_error(job_element.attrib)
             if crashed:
                 crashes_element = ET.Element(aux_file_kw['crashes'])
                 if crash_indices is not None:
                     crashes_element.text = ' '.join(str(i) for i in crash_indices)
-                job_element.append(crashes_element)       
-        tree.write(self.auxilliaryFilename)
+                job_element.append(crashes_element)
+        writeXMLFile(root,self.auxilliaryFilename)
         
     def search_stream_for_error(self,job_attributes):
         """Search the stream files of job defined by the arguments for errors and return
