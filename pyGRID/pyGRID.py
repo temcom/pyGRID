@@ -75,7 +75,7 @@ def writeXMLFile(element,filename):
     element -- An ElementTree.Element defining an xml tree.
     filename -- String representing the location and name of the file to write
     """
-    rough_string = ET.tostring(element, 'utf-8')
+    rough_string = ET.tostring(element, 'utf-8').replace('\n','').replace('\t','')
     reparsed = minidom.parseString(rough_string)
     text_file = open(filename, "w")
     text_file.write(reparsed.toprettyxml())
@@ -345,7 +345,7 @@ class pyGRID:
         file_string = open(filepath,'r').read()
         root = ET.fromstring(file_string)
         for job_element in root.findall(aux_file_kw['job']):
-            crashed, crash_indices = self.search_stream_for_error(job_element.attrib)
+            crashed, crash_indices = self.search_stream_for_error(dict(job_element.attrib))
             if crashed:
                 crashes_element = ET.Element(aux_file_kw['crashes'])
                 if crash_indices is not None:
