@@ -98,7 +98,7 @@ def parse_array_notation(array_string):
         return range(int(pieces[0]),int(pieces[1])+1,int(pieces[2]))
     return []
 
-def _substitute_in_templates(filename_template,substitution_dict):
+def _substitute_in_templates(template,substitution_dict):
     """Create a real filename by substituting the arguments in a template filename
 
     Keyword arguments:
@@ -107,8 +107,8 @@ def _substitute_in_templates(filename_template,substitution_dict):
                          the values to substitute them with as values
     """
     for k,v in substitution_dict.iteritems(): 
-        filename_template = filename_template.replace(k,v)
-    return filename_template
+        template = template.replace(k,v)
+    return template
 
 def parse_parameters(par_element = None):
     """Parse the children of the parameter element and return a dictionary with the
@@ -162,10 +162,7 @@ class ParamParser:
         self.values = []
         self.interval = []
         self.prev_token = None        
-#         print "\nString "+string
-#         print "\nTokens "+str(tokens)
         for t in tokens:
-#             self._print_state(t)
             if t is 'COLON':
                 if isinstance(self.prev_token, tuple) and self.prev_token[0] is 'NUMBER':
                     self.interval.append(float(self.prev_token[1]))
