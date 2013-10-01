@@ -11,6 +11,8 @@ class TestPyGRID(unittest.TestCase):
         self.tree = ET.parse('tests/tests.xml')
         self.root = self.tree.getroot()
         self.parent_map = dict((c, p) for p in self.root.getiterator() for c in p)
+        self.crashFile = open('tests/crashTest.grid','r').read()
+        self.crash_read_index = -1
 
     def test_find_sim_element(self):
         sim_element = find_sim_element(self.root,'basicTest')
@@ -36,6 +38,15 @@ class TestPyGRID(unittest.TestCase):
         self.assertEqual(parse_array_notation('5'), 5)
         self.assertEqual(parse_array_notation('5-7'), [5, 6, 7])
         self.assertEqual(parse_array_notation('5-9:2'), [5, 7, 9])
+    
+    def test_parse_parmater_values(self):
+        par_parser = ParamParser()
+        self.assertEqual(par_parser.parse('0.5:4:2'), [0.5, 1.0, 1.5, 2.0])
+        self.assertEqual(par_parser.parse('0.5:4:2 5'), [0.5, 1.0, 1.5, 2.0, 5.0])
+        self.assertEqual(par_parser.parse('0.5:4:2 5 10'), [0.5, 1.0, 1.5, 2.0, 5.0, 10.0])
+        self.assertEqual(par_parser.parse('1:3:2 5 10:3:12 13'), [1.0, 1.5, 2.0, 5.0, 10.0, 11.0, 12.0, 13.0])
+        with self.assertRaises(InvalidParamStringError):
+            par_parser.parse('1::4')
 
     def test_parameters(self):
         sim_element = find_sim_element(self.root,'parSpaceTest')
@@ -69,7 +80,7 @@ class TestPyGRID(unittest.TestCase):
             bash_code = write_calls[0][0][0]
             assert error_handling_bash_code in bash_code
             assert '#!/usr/bin/env qsub' in bash_code
-            assert '#$ -e $JOB_NAME.o$JOB_ID.$TASK_ID' in bash_code
+            assert '#$ -e $JOB_NAME.e$JOB_ID.$TASK_ID' in bash_code
             assert '#$ -m es' in bash_code
             assert '#$ -j y' in bash_code
             assert '#$ -M sabbatini@physics.uq.edu.au' in bash_code
@@ -175,17 +186,41 @@ class TestPyGRID(unittest.TestCase):
             assert all('echo $Amp' in s for s in bash_code)
             
             # check that we have recorded 9 submitted jobs
-            job_list = re.finditer('JOB_NAME="parSpaceTest" array="1-10"', aux_code)
+            job_list = re.finditer('JOB_NAME="parSpaceTest"', aux_code)
             assert sum(1 for s in job_list) == 9
             
             # check that each parameter value has been called exactly three times
             # this is because we have 3 values of each parameters hence the 3x3 calls
-            assert sum(1 for s in re.finditer('Amp="2.0"', aux_code)) == 3
-            assert sum(1 for s in re.finditer('Amp="5.0"', aux_code)) == 3
-            assert sum(1 for s in re.finditer('Amp="6.0"', aux_code)) == 3
-            assert sum(1 for s in re.finditer('omega="1.0"', aux_code)) == 3
-            assert sum(1 for s in re.finditer('omega="5.5"', aux_code)) == 3
-            assert sum(1 for s in re.finditer('omega="10.0"', aux_code)) == 3
+            assert sum(1 for s in re.finditer('PAR_Amp="2.0"', aux_code)) == 3
+            assert sum(1 for s in re.finditer('PAR_Amp="5.0"', aux_code)) == 3
+            assert sum(1 for s in re.finditer('PAR_Amp="6.0"', aux_code)) == 3
+            assert sum(1 for s in re.finditer('PAR_omega="1.0"', aux_code)) == 3
+            assert sum(1 for s in re.finditer('PAR_omega="5.5"', aux_code)) == 3
+            assert sum(1 for s in re.finditer('PAR_omega="10.0"', aux_code)) == 3
+    
+    def test_crash_submission(self):
+        def side_effect():
+            self.crash_read_index = self.crash_read_index + 1
+            if self.crash_read_index is 0:
+                return self.crashFile
+            elif self.crash_read_index is 91:
+                return 'test'
+            else:
+                return 'test2'
+    
+        sim_element = find_sim_element(self.root,'crashTest')
+        gridJob = pyGRID(sim_element, self.parent_map)        
+        with mock.patch('__builtin__.open', mock.mock_open(read_data=self.crashFile), 
+                                                               create=True) as fake_file:
+                                                               
+            fake_file.return_value.__enter__.return_value.read.side_effect = side_effect 
+            gridJob.scan_crashed_jobs()
+            open_calls = fake_file.call_args_list
+            assert len(open_calls) == 92
+            
+            handle = fake_file()
+            aux_code = handle.write.call_args_list[0][0][0]
+#             print aux_code
 
 if __name__ == '__main__':
     unittest.main()
