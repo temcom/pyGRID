@@ -58,21 +58,11 @@ To invoke the documentation for pyGRID command line option type `pyGRID --help`.
 Tests
 -----
 
-I have created some tests for pyGRID in order to ensure that basic functions are not broken during development but they are by no mean exhaustive.
-
-In particular tests have to be written for:
-* Submission of jobs. At the moment the tests only check that the arguments defined in the xml file are parsed correctly and are represented in the pyGRID object.
-* Detection and resubmission of crashed jobs.
-
+I have created some tests for pyGRID in order to ensure that basic functions are not broken during development.
 Both these tasks require some sort of system in place to emulate `qsub` and its responses.
 
-To run tests install `nose` through `pip install nose` and type
+To run the tests install `nose` with `pip install nose` and type
 ```
 nosetests
 ```
 in the repository main directory.
-
-TODO
-----
-
-* Extend the syntax to define the values of the parameters to include the ability to specify the increment not only the number of steps.
