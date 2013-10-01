@@ -8,11 +8,21 @@ from pyGRID import *
 class TestPyGRID(unittest.TestCase):
 
     def setUp(self):
+        def side_effect():
+            self.crash_read_index = self.crash_read_index + 1
+            if self.crash_read_index is 0:
+                return self.crashFile
+            elif self.crash_read_index < 6:
+                return pyGRID_error_identifier
+            else:
+                return "This is fine"
+                
         self.tree = ET.parse('tests/tests.xml')
         self.root = self.tree.getroot()
         self.parent_map = dict((c, p) for p in self.root.getiterator() for c in p)
         self.crashFile = open('tests/crashTest.grid','r').read()
         self.crash_read_index = -1
+        self.side_effect = side_effect
 
     def test_find_sim_element(self):
         sim_element = find_sim_element(self.root,'basicTest')
@@ -198,29 +208,51 @@ class TestPyGRID(unittest.TestCase):
             assert sum(1 for s in re.finditer('PAR_omega="5.5"', aux_code)) == 3
             assert sum(1 for s in re.finditer('PAR_omega="10.0"', aux_code)) == 3
     
-    def test_crash_submission(self):
-        def side_effect():
-            self.crash_read_index = self.crash_read_index + 1
-            if self.crash_read_index is 0:
-                return self.crashFile
-            elif self.crash_read_index is 91:
-                return 'test'
-            else:
-                return 'test2'
-    
+    def test_crash_detection(self):    
         sim_element = find_sim_element(self.root,'crashTest')
         gridJob = pyGRID(sim_element, self.parent_map)        
         with mock.patch('__builtin__.open', mock.mock_open(read_data=self.crashFile), 
                                                                create=True) as fake_file:
                                                                
-            fake_file.return_value.__enter__.return_value.read.side_effect = side_effect 
+            fake_file.return_value.__enter__.return_value.read.side_effect = self.side_effect 
             gridJob.scan_crashed_jobs()
             open_calls = fake_file.call_args_list
             assert len(open_calls) == 92
             
             handle = fake_file()
             aux_code = handle.write.call_args_list[0][0][0]
-#             print aux_code
+            root = ET.fromstring(aux_code)
+            first_job = root[0]
+            job_children = list(first_job)
+            assert len(job_children) == 1
+            assert job_children[0].tag == aux_file_kw['crashes']
+            assert all(str(i) in job_children[0].text for i in range(1,5))
+    
+    @mock.patch('subprocess.Popen')        
+    def test_crash_resubmission(self, fake_popen):
+        fake_popen().stdout.read.return_value = '4'
+        sim_element = find_sim_element(self.root,'crashTest')
+        gridJob = pyGRID(sim_element, self.parent_map)
+        aux_code = None        
+        with mock.patch('__builtin__.open', mock.mock_open(read_data=self.crashFile), 
+                                                               create=True) as fake_file:
+                                                               
+            fake_file.return_value.__enter__.return_value.read.side_effect = self.side_effect 
+            gridJob.scan_crashed_jobs()
+            handle = fake_file()
+            aux_code = handle.write.call_args_list[0][0][0]
+        
+        with mock.patch('__builtin__.open', mock.mock_open(read_data=aux_code), 
+                                                               create=True) as fake_file:
+                                                               
+            gridJob.resubmit_crashed(scan_first = False)
+            popen_calls = fake_popen.call_args_list            
+            # let's extract the strings of the qsub calls and for file write calls
+            qsub_calls = [popen_calls[i][0][0] for i in range(1,len(popen_calls))]
+            assert len(qsub_calls) == 5
+            assert all('-v PAR_Amp=2.0,PAR_omega=1.0' in s for s in qsub_calls)
+            for i in range(1,6):
+                assert any('-t {0}'.format(str(i)) in s for s in qsub_calls)
 
 if __name__ == '__main__':
     unittest.main()
