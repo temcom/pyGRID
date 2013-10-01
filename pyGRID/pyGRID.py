@@ -32,7 +32,7 @@ aux_file_kw = dict(root = 'jobs',
                     name = 'JOB_NAME',
                     id = 'JOB_ID',
                     array = 'array',
-                    chrashes = 'crashes')
+                    crashes = 'crashes')
 
 filename_prefixes = dict(parameters = 'PAR')
 
@@ -110,7 +110,7 @@ def _substitute_in_templates(filename_template,substitution_dict):
         filename_template = filename_template.replace(k,v)
     return filename_template
 
-def _parse_parameters(par_element = None):
+def parse_parameters(par_element = None):
     """Parse the children of the parameter element and return a dictionary with the
     parameter names as keys and list of parameter values as values
 
@@ -247,7 +247,7 @@ class pyGRID:
         # parse the parameters to pass to the job
         par_element = sim_element.find(grid_file_kw['parameters'])
         if par_element is not None:
-            self.parameters = _parse_parameters(par_element)
+            self.parameters = parse_parameters(par_element)
         
         # parse the remaining qsub options
         for child in sim_element:
@@ -450,13 +450,16 @@ class pyGRID:
             print "The stream file {0} for the job does not exists".format(filename)
         return False
     
-    def resubmit_crashed(self):
-        self.scan_crashed_jobs()
+    def resubmit_crashed(self, filepath = None, scan_first = True):
+        if scan_first:
+            self.scan_crashed_jobs(filepath = filepath)
         
         self.sim.write_qsub_script(self.bashFilename)
         
-        tree = ET.parse(self.auxilliaryFilename)
-        root = tree.getroot()
+        if filepath is None:
+            filepath = self.auxilliaryFilename
+        file_string = open(filepath,'r').read()
+        root = ET.fromstring(file_string)
         for job_element in root.findall(aux_file_kw['job']):
             crash_element = job_element.find(aux_file_kw['crashes'])
             if crash_element is None:
@@ -468,7 +471,7 @@ class pyGRID:
             parameters.pop(aux_file_kw['id'],None)
             parameters.pop(aux_file_kw['array'],None)
             
-            if len(crased_indices) == 0:
+            if len(crashed_indices) == 0:
                 # if there are no crashed indices it means the job wasn't an array job so
                 # it's safe to just resubmit it
                 new_job_element = self._submit_job(zip(parameters.keys(),
@@ -478,7 +481,7 @@ class pyGRID:
                 root.append(new_job_element)
             else:
                 root.remove(job_element)
-                for i in crash_indices:
+                for i in crashed_indices:
                     new_job_element = self._submit_job(zip(parameters.keys(),
                                                                 parameters.values()),i)
                     root.append(new_job_element) 
