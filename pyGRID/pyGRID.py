@@ -110,21 +110,6 @@ def _substitute_in_templates(filename_template,substitution_dict):
         filename_template = filename_template.replace(k,v)
     return filename_template
 
-def _parse_parameter_value(par_value):
-    par_value = par_value.split(':')
-    if len(par_value) > 1:
-        # the parameter range was specified in the format start:stop or start:samples:stop
-        startValue = float(par_value[0])
-        stopValue = float(par_value[-1])
-        samples = 10
-        if len(par_value) == 3:
-            samples = int(par_value[1])                
-        par_value = linspace(startValue, stopValue, samples)
-    else:
-        # the parameter values was specified as a list of numbers
-        par_value = par_value[0].split()
-    return [float(x) for x in par_value]
-
 def _parse_parameters(par_element = None):
     """Parse the children of the parameter element and return a dictionary with the
     parameter names as keys and list of parameter values as values
@@ -135,6 +120,7 @@ def _parse_parameters(par_element = None):
                    empty dictionary
     """
     parameters = dict()
+    param_parser = ParamParser()
     
     if par_element is None:
         return parameters
@@ -142,8 +128,68 @@ def _parse_parameters(par_element = None):
     for parameter in par_element.findall(grid_file_kw['parameter']):
         par_name = parameter.get(grid_file_kw['par_name'])
         par_value = parameter.text.strip(' \n\t')
-        parameters[par_name] = _parse_parameter_value(par_value)
+        parameters[par_name] = param_parser.parse(par_value)
     return parameters
+
+class ParamParser:
+    def __init__(self):
+        self.scanner = re.Scanner([
+            (r"[0-9.eE+-]+", lambda scanner,token:("NUMBER", token)),
+            (r"[a-z_]+",     lambda scanner,token:("IDENTIFIER", token)),
+            (r"[:]",        lambda scanner,token:("COLON")),
+            (r"[,]",        lambda scanner,token:("COMMA")),
+            (r"\s+",         None), # None == skip token.
+        ])
+    
+    def _tokenize(self,string):
+        return self.scanner.scan(string)
+    
+    def _process_interval(self):
+        startValue = self.interval[0]
+        stopValue = self.interval[-1]
+        samples = 10
+        if len(self.interval) == 3:
+            samples = self.interval[1]                
+        new_values = linspace(startValue, stopValue, samples)
+        self.values.extend(new_values)
+        self.interval = []
+    
+    def _print_state(self, current_token):
+        print "t "+str(current_token)+"\tPV "+str(self.prev_token)+"\tI "+str(self.interval)+"\tV "+str(self.values)
+        
+    def parse(self,string):
+        tokens, remainder = self._tokenize(string)
+        self.values = []
+        self.interval = []
+        self.prev_token = None        
+#         print "\nString "+string
+#         print "\nTokens "+str(tokens)
+        for t in tokens:
+#             self._print_state(t)
+            if t is 'COLON':
+                if isinstance(self.prev_token, tuple) and self.prev_token[0] is 'NUMBER':
+                    self.interval.append(float(self.prev_token[1]))
+                    self.prev_token = t
+                    continue
+                raise InvalidParamStringError(string)
+            elif isinstance(t, tuple):
+                if t[0] is 'NUMBER':
+                    if isinstance(self.prev_token, tuple) and self.prev_token[0] is 'NUMBER':
+                        if len(self.interval) == 0:
+                            self.values.append(float(self.prev_token[1]))
+                        else:
+                            self.interval.append(float(self.prev_token[1]))
+                            self._process_interval()
+                    self.prev_token = t
+        if len(self.interval) != 0:
+            self.interval.append(float(self.prev_token[1]))
+            self._process_interval()
+            self.prev_token = None
+        if isinstance(self.prev_token, tuple) and self.prev_token[0] is 'NUMBER':
+            self.values.append(float(self.prev_token[1]))
+            self.prev_token = None
+        return self.values
+            
 
 class InvalidNameError(Exception):
     def __str__(self):
@@ -154,6 +200,12 @@ class InvalidSimulatioNameError(Exception):
         self.sim_name = sim_name
     def __str__(self):
         return "The file defines no job named {0}".format(self.sim_name)
+
+class InvalidParamStringError(Exception):
+    def __init__(self, par_string):
+        self.par_string = par_string
+    def __str__(self):
+        return "The parameter string {0} has invalid formatting".format(self.par_string)
 
 class pyGRID:
     
