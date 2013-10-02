@@ -16,8 +16,8 @@ from xml.dom import minidom
 from pyqsub import qsubOptions
 
 # global dictionary to map the syntax of the xml to the internal representation
-# This is useful in the case we want to change the syntax since we only need to change
-# the corresponding mapping string here and not in the rest of the code
+# This is useful in the case we want to change the syntax of the pyGRID
+# input/output files.
 grid_file_kw = dict(parameter = 'parameter',
                 parameters = 'parameters',
                 par_name = 'name',
@@ -25,7 +25,8 @@ grid_file_kw = dict(parameter = 'parameter',
                 code = 'code',
                 root_element = 'simulations',
                 sim_element = 'sim_element',
-                sim_name = 'N')
+                sim_name = 'N',
+                post_proc = 'post_processing')
 
 aux_file_kw = dict(root = 'jobs',
                     job = 'job',
@@ -36,9 +37,12 @@ aux_file_kw = dict(root = 'jobs',
 
 filename_prefixes = dict(parameters = 'PAR')
 
+# extensions for the bash and auxiliary files written by pyGRID
 bash_file_extension = 'sh'                 
 auxilliary_file_extension = 'grid'
 
+# This string, to be added to the bash files written by pyGRID, is a bash trap function
+# that detects errors in the execution of the files.
 pyGRID_error_identifier = "pyGRID ERROR!"
 error_handling_bash_code = '\n'\
 'function error_trap_handler()\n' \
@@ -52,7 +56,15 @@ error_handling_bash_code = '\n'\
 '\n' \
 'trap \'error_trap_handler ${{LINENO}} $?\' ERR\n'.format(pyGRID_error_identifier)
 
+
 def find_sim_element(root,sim_name):
+    """
+    Find an element by name in the root XML tree. If no element is found it returns None.
+    
+    Arguments:
+    root -- The root of the ElementTree to search
+    sim_name -- The name of the simulation element to find
+    """
     try:
         # searching elements in an xml tree by attributes is available only for
         # Python 2.7+
@@ -66,12 +78,32 @@ def find_sim_element(root,sim_name):
             current_name = sim_element.get(grid_file_kw['sim_name'])
             if current_name == sim_name:
                 return sim_element
+        return None
+
+def attributes_list(root,attr_name):
+    """
+    Compile a list with the values of an attribute for the nodes in the root tree. Returns
+    an empty list if no element in the tree has the attribute.
+    
+    Arguments:
+    root -- The root of the ElementTree to search
+    attr_name -- The name of the attribute to find
+    """
+    values = []
+    for child in root:
+        value = child.get(attr_name)
+        if value is not None:
+            values.append(value)
+    
+    return values
+
 
 def writeXMLFile(element,filename):
-    """Utility method that takes an xml element and write it to a file with pretty
+    """
+    Utility method that takes an xml element and write it to a file with pretty
     printing.
 
-    Keyword arguments:
+    Arguments:
     element -- An ElementTree.Element defining an xml tree.
     filename -- String representing the location and name of the file to write
     """
@@ -81,12 +113,14 @@ def writeXMLFile(element,filename):
     text_file.write(reparsed.toprettyxml())
     text_file.close()
 
+
 def parse_array_notation(array_string):
-    """Parse a string defining an array of jobs and return an array of integers
+    """
+    Parse a string defining an array of jobs and return an array of integers
     containing the TASK_IDs of the jobs. For the notation of an array job see qsub 
     man page.
 
-    Keyword arguments:
+    Arguments:
     array_string -- The string defining the array job
     """
     pieces = re.split("-|:",array_string)
@@ -98,10 +132,12 @@ def parse_array_notation(array_string):
         return range(int(pieces[0]),int(pieces[1])+1,int(pieces[2]))
     return []
 
-def _substitute_in_templates(template,substitution_dict):
-    """Create a real filename by substituting the arguments in a template filename
 
-    Keyword arguments:
+def substitute_in_templates(template,substitution_dict):
+    """
+    Create a real filename by substituting the arguments in a template filename
+
+    Arguments:
     filename_template -- The string template to generate the filename
     substitution_dict -- a dictionary containing the keywords to substitute as keys and
                          the values to substitute them with as values
@@ -110,8 +146,10 @@ def _substitute_in_templates(template,substitution_dict):
         template = template.replace(k,v)
     return template
 
+
 def parse_parameters(par_element = None):
-    """Parse the children of the parameter element and return a dictionary with the
+    """
+    Parse the children of the parameter element and return a dictionary with the
     parameter names as keys and list of parameter values as values
 
     Keyword arguments:
@@ -131,7 +169,12 @@ def parse_parameters(par_element = None):
         parameters[par_name] = param_parser.parse(par_value)
     return parameters
 
+
 class ParamParser:
+    """
+    Class to parse the values assigned to a parameter.
+    """
+    
     def __init__(self):
         self.scanner = re.Scanner([
             (r"[0-9.eE+-]+", lambda scanner,token:("NUMBER", token)),
@@ -142,33 +185,56 @@ class ParamParser:
         ])
     
     def _tokenize(self,string):
+        """
+        Tokenize a string using re.Scanner and return a list containing the token in the
+        form tuple for numbers and identifiers and strings for commas and colons
+        
+        Arguments:
+        string -- the string to tokenize
+        """
         return self.scanner.scan(string)
     
     def _process_interval(self):
+        """
+        Creates a list of values from the entries in the interval stack. It appends the
+        new_values to the values stack and empty the interval stack.
+        """
         startValue = self.interval[0]
         stopValue = self.interval[-1]
+        
         samples = 10
         if len(self.interval) == 3:
             samples = self.interval[1]                
+        
         new_values = linspace(startValue, stopValue, samples)
         self.values.extend(new_values)
         self.interval = []
     
     def _print_state(self, current_token):
+        """
+        Utility method to output the current state of the parser.
+        """
         print "t "+str(current_token)+"\tPV "+str(self.prev_token)+"\tI "+str(self.interval)+"\tV "+str(self.values)
         
     def parse(self,string):
-        tokens, remainder = self._tokenize(string)
+        """
+        Parse a string representing the values of a parameter and returns them in a list.
+        """
         self.values = []
         self.interval = []
         self.prev_token = None        
+        
+        tokens, remainder = self._tokenize(string)
         for t in tokens:
-            if t is 'COLON':
+            
+            if t is 'COLON':        
                 if isinstance(self.prev_token, tuple) and self.prev_token[0] is 'NUMBER':
                     self.interval.append(float(self.prev_token[1]))
                     self.prev_token = t
                     continue
+                
                 raise InvalidParamStringError(string)
+                
             elif isinstance(t, tuple):
                 if t[0] is 'NUMBER':
                     if isinstance(self.prev_token, tuple) and self.prev_token[0] is 'NUMBER':
@@ -177,26 +243,32 @@ class ParamParser:
                         else:
                             self.interval.append(float(self.prev_token[1]))
                             self._process_interval()
+                            
                     self.prev_token = t
+        
         if len(self.interval) != 0:
             self.interval.append(float(self.prev_token[1]))
             self._process_interval()
             self.prev_token = None
+            
         if isinstance(self.prev_token, tuple) and self.prev_token[0] is 'NUMBER':
             self.values.append(float(self.prev_token[1]))
             self.prev_token = None
+            
         return self.values
             
 
 class InvalidNameError(Exception):
     def __str__(self):
         return "The simulation element representing the job must have a name."
-        
+    
+
 class InvalidSimulatioNameError(Exception):
     def __init__(self, sim_name):
         self.sim_name = sim_name
     def __str__(self):
         return "The file defines no job named {0}".format(self.sim_name)
+
 
 class InvalidParamStringError(Exception):
     def __init__(self, par_string):
@@ -204,25 +276,57 @@ class InvalidParamStringError(Exception):
     def __str__(self):
         return "The parameter string {0} has invalid formatting".format(self.par_string)
 
+
 class pyGRID:
+    """
+    Main class. It represents a job to submit to the cluster through qsub.
+    """
     
+    def __init__(self, sim_element=None, parent_map=None):
+        """
+        Initialise a pyGRID object from a simulation element and a map 
+        of parents for every node in the xml tree.
+
+        Keyword arguments:
+        sim_element -- An ElementTree.Element defining the parameters for
+                       the job (default None). If None is passed the
+                       object is initialised with an empty qsubOptions object and an
+                       empty dictionary for the parameters list
+        parent_map -- A dictionary containing a list of nodes as keys and their parents
+                      as values (default None). If None is passed the inherit attribute
+                      of the simulation element is ignored.
+        """
+        self.sim = qsubOptions()
+        self.parameters = dict()
+        self.output_filename_template = "$JOB_NAME.o$JOB_ID.$TASK_ID"
+        self.error_filename_template = "$JOB_NAME.e$JOB_ID.$TASK_ID"
+        
+        if sim_element is None:
+            return
+        
+        # parse the element
+        self._parse_element(sim_element,parent_map)
+        
     def __str__(self):
         return '{0}\nParameters: {1}'.format(str(self.sim.args), str(self.parameters))
 
     def _parse_element(self, sim_element=None, parent_map=None):
-        """Parse the children of the simulation element and insert them as arguments
+        """
+        Parse the children of the simulation element and insert them as arguments
         of the cluster job.
 
         Keyword arguments:
         sim_element -- An ElementTree.Element defining the parameters for
                        the job (default None).
+        parent_map -- a dictionary containing a list of the elements in an XML tree as
+                      as keys and their parent node as values
         """
         if sim_element is None:
             return
         
         # check if the simulation element inherits from another sim_element
         inherit_from = sim_element.get(grid_file_kw['par_inherit'])
-        if inherit_from and parent_map:
+        if inherit_from is not None and parent_map is not None:
             # parse the options from the parent element first
             
             # simulation elements are always the children of the root element so we can
@@ -269,33 +373,17 @@ class pyGRID:
                     self.sim.parse_and_add('-{0} {1}'.format(child.tag, argument_value))
                 else:
                     self.sim.parse_and_add('-{0}'.format(child.tag))
-    
-    def __init__(self, sim_element=None, parent_map=None):
-        """Initialise a pyGRID object from a simulation element and a map 
-        of parents for every node in the xml tree.
-
-        Keyword arguments:
-        sim_element -- An ElementTree.Element defining the parameters for
-                       the job (default None). If None is passed the
-                       object is initialised with an empty qsubOptions object and an
-                       empty dictionary for the parameters list
-        parent_map -- A dictionary containing a list of nodes as keys and their parents
-                      as values (default None). If None is passed the inherit attribute
-                      of the simulation element is ignored.
-        """
-        self.sim = qsubOptions()
-        self.parameters = dict()
-        self.output_filename_template = "$JOB_NAME.o$JOB_ID.$TASK_ID"
-        self.error_filename_template = "$JOB_NAME.e$JOB_ID.$TASK_ID"
         
-        if sim_element is None:
-            return
-        
-        # parse the element
-        self._parse_element(sim_element,parent_map)
+        # finally let's parse the post_processing job if any
+        post_proc_job = sim_element.get(grid_file_kw['post_proc'])
+        if post_proc_job is not None and parent_map is not None:
+            root_element = parent_map[sim_element]
+            post_proc_element = find_sim_element(root_element,post_proc_job)
+            self.post_proc = pyGRID(sim_element = post_proc_element, parent_map = parent_map)
             
     def _generate_param_space(self):
-        """Generate all the possible combinations of the parameters for the job.
+        """
+        Generate all the possible combinations of the parameters for the job.
         Returns a list of parameters and list of all possible combinations of the
         parameters values. If the job has no parameters then returns None for both.
         """
@@ -306,7 +394,8 @@ class pyGRID:
                                                           self.parameters.values())]
     
     def _submit_job(self,parameter_list = None, array_string = None):
-        """Utility method to submit a job to qsub. Return an ElementTree.Element object
+        """
+        Utility method to submit a job to qsub. Return an ElementTree.Element object
         describing the job just submitted.
         
         Keyword arguments:
@@ -330,8 +419,8 @@ class pyGRID:
                 substitution_dict['$'+filename_prefixes['parameters']+'_'+str(pair[0])] = str(pair[1])
             param_string = ','.join(param_string)
             execstring.extend(['-v',param_string])
-            output_filename = _substitute_in_templates(output_filename,substitution_dict)
-            error_filename = _substitute_in_templates(error_filename,substitution_dict)
+            output_filename = substitute_in_templates(output_filename,substitution_dict)
+            error_filename = substitute_in_templates(error_filename,substitution_dict)
 
         self.sim.args.o = output_filename
         self.sim.args.e = error_filename  
@@ -352,7 +441,8 @@ class pyGRID:
         return job
     
     def submit(self):
-        """Submit a job to the queue manager for every possible combination of the
+        """
+        Submit a job to the queue manager for every possible combination of the
         parameters of the simulation. It also writes an xml file holding the job_id from
         the queue manager for every job submitted with the list of the parameters passed
         and the array information.
@@ -380,9 +470,16 @@ class pyGRID:
         delattr(self.sim.args,'o')
         delattr(self.sim.args,'e')
         self.sim.write_qsub_script(self.bashFilename)
+        
+        # if this job has a post processing simulation submit it to the queue
+        if hasattr(self,'post_proc'):
+            job_ids = attributes_list(jobs,aux_file_kw['id'])
+            self.post_proc.args.hold_jid = ','.join(job_ids)
+            self.post_proc.submit()
     
     def scan_crashed_jobs(self, filepath = None):
-        """Loads the auxiliary file for this job, generate the filenames for the streams
+        """
+        Loads the auxiliary file for this job, generate the filenames for the streams
         and check them for runtime errors.
         
         Keyword arguments:
@@ -391,6 +488,7 @@ class pyGRID:
         """
         if filepath is None:
             filepath = self.auxilliaryFilename
+        
         file_string = open(filepath,'r').read()
         root = ET.fromstring(file_string)
         for job_element in root.findall(aux_file_kw['job']):
@@ -400,41 +498,49 @@ class pyGRID:
                 if crash_indices is not None:
                     crashes_element.text = ' '.join(str(i) for i in crash_indices)
                 job_element.append(crashes_element)
+        
         writeXMLFile(root,self.auxilliaryFilename)
         
     def search_stream_for_error(self,job_attributes):
-        """Search the stream files of job defined by the arguments for errors and return
+        """
+        Search the stream files of job defined by the arguments for errors and return
         True if any is encountered
 
-        Keyword arguments:
+        Arguments:
         job_attributes -- a dictionary of attributes defining the job
         """
         array_string = job_attributes.pop(aux_file_kw['array'],None)
         keywords = ['$'+str(x) for x in job_attributes.keys()]
         
-        output = _substitute_in_templates(self.output_filename_template,
+        output = substitute_in_templates(self.output_filename_template,
                                              dict(zip(keywords,job_attributes.values())))
-        error = _substitute_in_templates(self.error_filename_template,
+        error = substitute_in_templates(self.error_filename_template,
                                              dict(zip(keywords,job_attributes.values())))
         
         if array_string is not None:
-            array_indices = parse_array_notation(array_string)
             crash_indices = []
+            
+            array_indices = parse_array_notation(array_string)
             for index in array_indices:
-                task_output = _substitute_in_templates(output,{'$TASK_ID':str(index)})
-                task_error = _substitute_in_templates(error,{'$TASK_ID':str(index)})
+                task_output = substitute_in_templates(output,{'$TASK_ID':str(index)})
+                task_error = substitute_in_templates(error,{'$TASK_ID':str(index)})
+            
                 if self._search_file_for_error(task_output):
                     crash_indices.append(index)
                     continue
+                
                 if not hasattr(self.sim.args,'j') and self._search_file_for_error(task_error):
                     crash_indices.append(index)
+            
             if len(crash_indices):
                 return True, crash_indices
         else:
             if self._search_file_for_error(task_output):
                 return True, None
+            
             if not hasattr(self.sim.args,'j') and self._search_file_for_error(task_error):
                 return True, None
+        
         return False, None
     
     def _search_file_for_error(self, filename):
@@ -448,6 +554,17 @@ class pyGRID:
         return False
     
     def resubmit_crashed(self, filepath = None, scan_first = True):
+        """
+        Resubmit crashed jobs to the queue manager with appropriate values of the 
+        parameters.
+        
+        Keyword arguments:
+        filepath -- the path of file from which to parse the list of jobs in case it has 
+                    been renamed from pyGRID default. If None the pyGRID default is used
+        scan_first -- Flag to tell pyGRID whether it should parse the output streams of 
+                      the jobs in search of crashed ones. If False pyGRID will use the 
+                      ids of crashed jobs it finds in the auxilliary file
+        """
         if scan_first:
             self.scan_crashed_jobs(filepath = filepath)
         
@@ -461,6 +578,7 @@ class pyGRID:
             crash_element = job_element.find(aux_file_kw['crashes'])
             if crash_element is None:
                 continue
+            
             crashed_indices = crash_element.text.split()
             
             parameters = job_element.attrib
@@ -482,7 +600,7 @@ class pyGRID:
                     new_job_element = self._submit_job(zip(parameters.keys(),
                                                                 parameters.values()),i)
                     root.append(new_job_element) 
-        
+
 
 def main():
     # define the arguments for the python script
