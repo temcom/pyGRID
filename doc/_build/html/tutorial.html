@@ -1,0 +1,192 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Tutorial &mdash; pyGRID 0.2.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/flasky.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="pyGRID 0.2.0 documentation" href="index.html" />
+    <link rel="prev" title="Installation" href="installation.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body>
+  
+  
+
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="installation.html" title="Installation"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">pyGRID 0.2.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="tutorial">
+<h1>Tutorial<a class="headerlink" href="#tutorial" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="basic-script">
+<h2>Basic Script<a class="headerlink" href="#basic-script" title="Permalink to this headline">¶</a></h2>
+<p>In this tutorial we will create a pyGRID script that defines a basic job to submit to the
+queue manager. Here is your first pyGRID script, copy its text and save it on a file
+called <em>basicTest.xml</em>.</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="cp">&lt;?xml version=&quot;1.0&quot;?&gt;</span>
+<span class="nt">&lt;simulations&gt;</span>
+
+    <span class="nt">&lt;sim_element</span> <span class="na">N=</span><span class="s">&quot;basicJob&quot;</span><span class="nt">&gt;</span>
+        <span class="nt">&lt;S&gt;</span>/bin/bash<span class="nt">&lt;/S&gt;</span>
+        <span class="nt">&lt;j&gt;</span>y<span class="nt">&lt;/j&gt;</span>
+        <span class="nt">&lt;cwd</span> <span class="nt">/&gt;</span>
+        <span class="nt">&lt;code&gt;</span> echo &quot;Basic Job&quot; <span class="nt">&lt;/code&gt;</span>
+    <span class="nt">&lt;/sim_element&gt;</span>
+
+<span class="nt">&lt;/simulations&gt;</span>
+</pre></div>
+</div>
+<p>pyGRID uses XML syntax to define jobs that you want to submit to the queue manager.</p>
+<p>The first line, <tt class="docutils literal"><span class="pre">&lt;?xml</span> <span class="pre">...&gt;</span></tt>, specifies the encoding and XML version and it is
+mandatory so copy and paste it on every pyGRID file you make.</p>
+<p>The <tt class="docutils literal"><span class="pre">&lt;simulations&gt;</span></tt> element is also mandatory, and encloses the definition of the job
+we want to submit.</p>
+<p>Jobs in pyGRID are defined with the <tt class="docutils literal"><span class="pre">&lt;sim_element</span> <span class="pre">N=&quot;...&quot;&gt;</span></tt> tag that requires at least
+one argument, <em>N</em>, containing the name of the job we will submit to the queue manager, in
+this case <em>basicJob</em> and <em>anotherJob</em>. A pyGRID file can contain as many
+job definitions as you wish and each definition will be identified by the name of the job.</p>
+<p>Inside the <tt class="docutils literal"><span class="pre">&lt;sim_element</span> <span class="pre">&gt;</span></tt> we define the options of the job we want pyGRID to pass to
+the queue manager. At the moment pyGRID supports only clusters running <em>SUN GRID ENGINE</em>
+and as such it conforms to the syntax of <em>qsub</em>. If you are already familiar with <em>qsub</em>
+you will be happy to know that you can define all the options accepted by <em>qsub</em> inside
+<tt class="docutils literal"><span class="pre">&lt;sim_element</span> <span class="pre">&gt;</span></tt>. You just have to swap the qsub&#8217;s</p>
+<div class="highlight-python"><pre>-OPTION_NAME_1 OPTION_VALUE
+-OPTION_NAME_2</pre>
+</div>
+<p>notations for pyGRID&#8217;s</p>
+<div class="highlight-python"><pre>&lt;OPTION_NAME_1&gt; OPTION_VALUE &lt;/OPTION_NAME_1&gt;
+&lt;OPTION_NAME_2 /&gt;</pre>
+</div>
+<p>Notice that <em>qsub</em> option flags gets translated to self-closing XML tags in pyGRID.</p>
+<p>For the script introduced above the</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;S&gt;</span>/bin/bash<span class="nt">&lt;/S&gt;</span>
+<span class="nt">&lt;j&gt;</span>y<span class="nt">&lt;/j&gt;</span>
+<span class="nt">&lt;cwd</span> <span class="nt">/&gt;</span>
+</pre></div>
+</div>
+<p>elements are translated by pyGRID to the <em>qsub</em> options</p>
+<div class="highlight-python"><pre>-S /bin/bash -j y -cwd</pre>
+</div>
+<p>If you are not familiar with <em>qsub</em> and want to know about its options visit the
+<a class="reference external" href="http://gridscheduler.sourceforge.net/htmlman/htmlman1/qsub.html">man page</a>.</p>
+<p>You may have noticed from the script above that pyGRID introduces two differences with
+respect to the <em>qsub</em> syntax. You have already encountered the first, the name of the job,
+that is defined as an attribute of the <tt class="docutils literal"><span class="pre">&lt;sim_element</span> <span class="pre">&gt;</span></tt> and not as an option inside it.</p>
+<p>The second is the code tag</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;code&gt;</span> echo &quot;Basic Job&quot; <span class="nt">&lt;/code&gt;</span>
+</pre></div>
+</div>
+<p>which defines the actions that your job will execute. pyGRID will create a bash script
+with the properties of a job and the code it needs to execute to submit to the queue
+manager. The content of the code tag will be included verbatim at the end of the bash
+script and can contain any valid bash code.
+In particular this can be:</p>
+<ul class="simple">
+<li>the path of an executable to be run on the cluster</li>
+<li>any bash command to run a python or matlab script on the cluster, e.g. &#8220;/usr/local/bin/matlab -nojvm -nodisplay -r matlab_job&#8221;</li>
+<li>any amount of bash code to manipulate files, create or delete folders, print environment variables etc.</li>
+</ul>
+</div>
+<div class="section" id="inheritance">
+<h2>Inheritance<a class="headerlink" href="#inheritance" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="post-processing">
+<h2>Post Processing<a class="headerlink" href="#post-processing" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Tutorial</a><ul>
+<li><a class="reference internal" href="#basic-script">Basic Script</a></li>
+<li><a class="reference internal" href="#inheritance">Inheritance</a></li>
+<li><a class="reference internal" href="#post-processing">Post Processing</a></li>
+</ul>
+</li>
+</ul>
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="installation.html" title="previous chapter">Installation</a></li>
+  </ul></li>
+</ul>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/tutorial.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
++  
++    <a href="http://github.com/dedalusj/pyGRID"><img style="position: fixed; top: 0; right: 0; border: 0;"
++    src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
++  
++
+  <div class="footer">
+    &copy; Copyright 2013, Jacopo Sabbatini.
+    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a>.
+  </div>
+  
+  </body>
+</html>
