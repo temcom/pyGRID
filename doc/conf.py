@@ -100,7 +100,7 @@ html_theme = 'flask'
 # documentation.
 html_theme_options = {
         'github_fork' : 'dedalusj/pyGRID',
-        'index_logo': False
+        'index_logo': 'pyGRID-big.png'
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
@@ -136,7 +136,11 @@ html_static_path = ['_static']
 #html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
-#html_sidebars = {}
+html_sidebars = {
+    'index': ['localtoc.html', 'relations.html', 'sourcelink.html', 'searchbox.html'],
+    '**': ['sidebarlogo.html', 'localtoc.html', 'relations.html',
+                 'sourcelink.html', 'searchbox.html']
+}
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
