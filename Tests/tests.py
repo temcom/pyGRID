@@ -8,7 +8,7 @@ from pyGRID import *
 class TestPyGRID(unittest.TestCase):
 
     def setUp(self):
-        def side_effect():
+        def file_read_side_effect():
             self.crash_read_index = self.crash_read_index + 1
             if self.crash_read_index is 0:
                 return self.crashFile
@@ -17,12 +17,21 @@ class TestPyGRID(unittest.TestCase):
             else:
                 return "This is fine"
                 
+        def job_id_side_effect():
+            self.job_id = self.job_id + 1
+            return str(self.job_id)
+                
         self.tree = ET.parse('tests/tests.xml')
         self.root = self.tree.getroot()
         self.parent_map = dict((c, p) for p in self.root.getiterator() for c in p)
+        
         self.crashFile = open('tests/crashTest.grid','r').read()
+        
         self.crash_read_index = -1
-        self.side_effect = side_effect
+        self.file_read_side_effect = file_read_side_effect
+        
+        self.job_id = 0
+        self.job_id_side_effect = job_id_side_effect
 
     def test_find_sim_element(self):
         sim_element = find_sim_element(self.root,'basicTest')
@@ -70,7 +79,7 @@ class TestPyGRID(unittest.TestCase):
     
     @mock.patch('subprocess.Popen')
     def test_basic_submission(self,fake_popen):
-        fake_popen().stdout.read.return_value = '4'
+        fake_popen().stdout.read.side_effect = self.job_id_side_effect
         sim_element = find_sim_element(self.root,'basicTest')
         gridJob = pyGRID(sim_element, self.parent_map)
         with mock.patch('__builtin__.open', mock.mock_open(), create=True) as fake_file:
@@ -117,8 +126,8 @@ class TestPyGRID(unittest.TestCase):
             assert '<?xml version="1.0" ?>' in aux_code
             assert '<jobs>' in aux_code
             assert '</jobs>' in aux_code
-            # make sure the job element appears only once in the right form
-            job_list = re.finditer('<job JOB_ID="4" JOB_NAME="basicTest"/>', aux_code)
+            # make sure the job element appears only once in the right form            
+            job_list = re.finditer('<job JOB_ID="1" JOB_NAME="basicTest"/>', aux_code)
             assert sum(1 for s in job_list) == 1
     
     def test_inheritance(self):
@@ -135,7 +144,7 @@ class TestPyGRID(unittest.TestCase):
         
     @mock.patch('subprocess.Popen')
     def test_inheritance_submission(self,fake_popen):
-        fake_popen().stdout.read.return_value = '4'
+        fake_popen().stdout.read.side_effect = self.job_id_side_effect
         sim_element = find_sim_element(self.root,'inheritanceTest')
         gridJob = pyGRID(sim_element, self.parent_map)
         with mock.patch('__builtin__.open', mock.mock_open(), create=True) as fake_file:
@@ -158,7 +167,7 @@ class TestPyGRID(unittest.TestCase):
     
     @mock.patch('subprocess.Popen')
     def test_parSpace_submission(self,fake_popen):
-        fake_popen().stdout.read.return_value = '4'
+        fake_popen().stdout.read.side_effect = self.job_id_side_effect
         sim_element = find_sim_element(self.root,'parSpaceTest')
         gridJob = pyGRID(sim_element, self.parent_map)
         with mock.patch('__builtin__.open', mock.mock_open(), create=True) as fake_file:
@@ -214,7 +223,7 @@ class TestPyGRID(unittest.TestCase):
         with mock.patch('__builtin__.open', mock.mock_open(read_data=self.crashFile), 
                                                                create=True) as fake_file:
                                                                
-            fake_file.return_value.__enter__.return_value.read.side_effect = self.side_effect 
+            fake_file.return_value.__enter__.return_value.read.side_effect = self.file_read_side_effect 
             gridJob.scan_crashed_jobs()
             open_calls = fake_file.call_args_list
             assert len(open_calls) == 92
@@ -230,14 +239,14 @@ class TestPyGRID(unittest.TestCase):
     
     @mock.patch('subprocess.Popen')        
     def test_crash_resubmission(self, fake_popen):
-        fake_popen().stdout.read.return_value = '4'
+        fake_popen().stdout.read.side_effect = self.job_id_side_effect
         sim_element = find_sim_element(self.root,'crashTest')
         gridJob = pyGRID(sim_element, self.parent_map)
         aux_code = None        
         with mock.patch('__builtin__.open', mock.mock_open(read_data=self.crashFile), 
                                                                create=True) as fake_file:
                                                                
-            fake_file.return_value.__enter__.return_value.read.side_effect = self.side_effect 
+            fake_file.return_value.__enter__.return_value.read.side_effect = self.file_read_side_effect 
             gridJob.scan_crashed_jobs()
             handle = fake_file()
             aux_code = handle.write.call_args_list[0][0][0]
@@ -253,6 +262,28 @@ class TestPyGRID(unittest.TestCase):
             assert all('-v PAR_Amp=2.0,PAR_omega=1.0' in s for s in qsub_calls)
             for i in range(1,6):
                 assert any('-t {0}'.format(str(i)) in s for s in qsub_calls)
+    
+    @mock.patch('subprocess.Popen')
+    def test_post_processing(self,fake_popen):
+        fake_popen().stdout.read.side_effect = self.job_id_side_effect
+        sim_element = find_sim_element(self.root,'postProcTest')
+        gridJob = pyGRID(sim_element, self.parent_map)
+        
+        assert hasattr(gridJob,'post_proc')
+        
+        with mock.patch('__builtin__.open', mock.mock_open(), create=True) as fake_file:
+            gridJob.submit()
+            
+            post_proc_call = fake_popen.call_args_list[-1]
+            assert post_proc_call[0][0] == 'qsub -terse postProcJob.sh'
+            assert post_proc_call[1]['shell'] == True
+            assert post_proc_call[1]['stdout'] == subprocess.PIPE
+            assert post_proc_call[1]['stderr'] == subprocess.STDOUT            
+
+            handle = fake_file()
+            
+            bash_code = handle.write.call_args_list[-3][0][0]
+            assert '#$ -hold_jid 1,2,3,4,5,6,7,8,9' in bash_code
 
 if __name__ == '__main__':
     unittest.main()
