@@ -474,7 +474,7 @@ class pyGRID:
         # if this job has a post processing simulation submit it to the queue
         if hasattr(self,'post_proc'):
             job_ids = attributes_list(jobs,aux_file_kw['id'])
-            self.post_proc.args.hold_jid = ','.join(job_ids)
+            self.post_proc.sim.args.hold_jid = ','.join(job_ids)
             self.post_proc.submit()
     
     def scan_crashed_jobs(self, filepath = None):
