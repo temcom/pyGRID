@@ -1,11 +1,17 @@
 Tutorial
 ========
 
-Basic Script
-------------
+Basics
+------
 
-In this tutorial we will create a pyGRID script that defines a basic job to submit to the
-queue manager. Here is your first pyGRID script, copy its text and save it on a file
+In this tutorial you will create a basic pyGRID script that defines a basic job to submit
+to the queue manager. This doc will first describe the structure of a script from an
+example and then provides instructions on how to submit the job using pyGRID. 
+
+The script
+++++++++++
+
+Here is your first pyGRID script, copy its text and save it on a file
 called *basicTest.xml*.
 
 .. code-block:: xml
@@ -79,17 +85,55 @@ The second is the code tag
     <code> echo "Basic Job" </code> 
 
 which defines the actions that your job will execute. pyGRID will create a bash script
-with the properties of a job and the code it needs to execute to submit to the queue
-manager. The content of the code tag will be included verbatim at the end of the bash
-script and can contain any valid bash code.
+with the properties of a job to submit to the queue manager. The content of the code tag 
+will be included verbatim at the end of the bash script and can contain any valid bash code.
 In particular this can be:
 
 * the path of an executable to be run on the cluster
 * any bash command to run a python or matlab script on the cluster, e.g. "/usr/local/bin/matlab -nojvm -nodisplay -r matlab_job"
 * any amount of bash code to manipulate files, create or delete folders, print environment variables etc.
 
+The submission process
+++++++++++++++++++++++
+
+In order to submit the job we have just defined just type
+
+::
+
+    pyGRID -f basicTest.xml -s basicJob -b
+
+in the terminal in the same folder of the *basicTest.xml* file. The job will be submitted 
+by pyGRID to the queue manager. You can check its status with ``qstat`` which list your
+currently active or queued jobs. Once *basicJob* finishes its output and error files will
+be written in the current directory.
+
+pyGRID command line options can be divided in three groups:
+
+* XML file option. This option is Required.
+    * ``-f <file_path>`` : specifies the path of the file to load.
+* Simulation options. These are mutually exlusive and at least one is Required.
+    * ``-s <job_name>`` : specifies the name of the simulation to load from the XML file.
+    * ``-a`` : loads all the simulations in the file.
+* Action options. Tell pyGRID which action to perform woth the specified simulation. These are mutually exclusive.
+    * ``-w`` : write the shell script for the simulation.
+    * ``-b`` : write the shell script and submit a job for every combination of the parameters of the simulation
+    * ``-c`` : scan the output sctream of finished jobs and detect the crashed ones. The JOB_ID and TASK_ID of the crashed job is saved in the .grid auxilliary file.
+    * ``-r`` : resubmit crashed jobs.
+
+To review this options from the command line type ``pyGRID --help`` in the terminal.
+
+Parameter Space
+---------------
+
+**Documentation coming soon.**
+
+Advanced Topics
+---------------
+
+**Documentation coming soon.**
+
 Inheritance
------------
++++++++++++
 
 Post Processing
----------------
++++++++++++++++

@@ -58,10 +58,14 @@
             
   <div class="section" id="tutorial">
 <h1>Tutorial<a class="headerlink" href="#tutorial" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="basic-script">
-<h2>Basic Script<a class="headerlink" href="#basic-script" title="Permalink to this headline">¶</a></h2>
-<p>In this tutorial we will create a pyGRID script that defines a basic job to submit to the
-queue manager. Here is your first pyGRID script, copy its text and save it on a file
+<div class="section" id="basics">
+<h2>Basics<a class="headerlink" href="#basics" title="Permalink to this headline">¶</a></h2>
+<p>In this tutorial you will create a basic pyGRID script that defines a basic job to submit
+to the queue manager. This doc will first describe the structure of a script from an
+example and then provides instructions on how to submit the job using pyGRID.</p>
+<div class="section" id="the-script">
+<h3>The script<a class="headerlink" href="#the-script" title="Permalink to this headline">¶</a></h3>
+<p>Here is your first pyGRID script, copy its text and save it on a file
 called <em>basicTest.xml</em>.</p>
 <div class="highlight-xml"><div class="highlight"><pre><span class="cp">&lt;?xml version=&quot;1.0&quot;?&gt;</span>
 <span class="nt">&lt;simulations&gt;</span>
@@ -117,9 +121,8 @@ that is defined as an attribute of the <tt class="docutils literal"><span class=
 </pre></div>
 </div>
 <p>which defines the actions that your job will execute. pyGRID will create a bash script
-with the properties of a job and the code it needs to execute to submit to the queue
-manager. The content of the code tag will be included verbatim at the end of the bash
-script and can contain any valid bash code.
+with the properties of a job to submit to the queue manager. The content of the code tag
+will be included verbatim at the end of the bash script and can contain any valid bash code.
 In particular this can be:</p>
 <ul class="simple">
 <li>the path of an executable to be run on the cluster</li>
@@ -127,11 +130,62 @@ In particular this can be:</p>
 <li>any amount of bash code to manipulate files, create or delete folders, print environment variables etc.</li>
 </ul>
 </div>
+<div class="section" id="the-submission-process">
+<h3>The submission process<a class="headerlink" href="#the-submission-process" title="Permalink to this headline">¶</a></h3>
+<p>In order to submit the job we have just defined just type</p>
+<div class="highlight-python"><pre>pyGRID -f basicTest.xml -s basicJob -b</pre>
+</div>
+<p>in the terminal in the same folder of the <em>basicTest.xml</em> file. The job will be submitted
+by pyGRID to the queue manager. You can check its status with <tt class="docutils literal"><span class="pre">qstat</span></tt> which list your
+currently active or queued jobs. Once <em>basicJob</em> finishes its output and error files will
+be written in the current directory.</p>
+<p>pyGRID command line options can be divided in three groups:</p>
+<ul>
+<li><dl class="first docutils">
+<dt>XML file option. This option is Required.</dt>
+<dd><ul class="first last simple">
+<li><tt class="docutils literal"><span class="pre">-f</span> <span class="pre">&lt;file_path&gt;</span></tt> : specifies the path of the file to load.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Simulation options. These are mutually exlusive and at least one is Required.</dt>
+<dd><ul class="first last simple">
+<li><tt class="docutils literal"><span class="pre">-s</span> <span class="pre">&lt;job_name&gt;</span></tt> : specifies the name of the simulation to load from the XML file.</li>
+<li><tt class="docutils literal"><span class="pre">-a</span></tt> : loads all the simulations in the file.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Action options. Tell pyGRID which action to perform woth the specified simulation. These are mutually exclusive.</dt>
+<dd><ul class="first last simple">
+<li><tt class="docutils literal"><span class="pre">-w</span></tt> : write the shell script for the simulation.</li>
+<li><tt class="docutils literal"><span class="pre">-b</span></tt> : write the shell script and submit a job for every combination of the parameters of the simulation</li>
+<li><tt class="docutils literal"><span class="pre">-c</span></tt> : scan the output sctream of finished jobs and detect the crashed ones. The JOB_ID and TASK_ID of the crashed job is saved in the .grid auxilliary file.</li>
+<li><tt class="docutils literal"><span class="pre">-r</span></tt> : resubmit crashed jobs.</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<p>To review this options from the command line type <tt class="docutils literal"><span class="pre">pyGRID</span> <span class="pre">--help</span></tt> in the terminal.</p>
+</div>
+</div>
+<div class="section" id="parameter-space">
+<h2>Parameter Space<a class="headerlink" href="#parameter-space" title="Permalink to this headline">¶</a></h2>
+<p><strong>Documentation coming soon.</strong></p>
+</div>
+<div class="section" id="advanced-topics">
+<h2>Advanced Topics<a class="headerlink" href="#advanced-topics" title="Permalink to this headline">¶</a></h2>
+<p><strong>Documentation coming soon.</strong></p>
 <div class="section" id="inheritance">
-<h2>Inheritance<a class="headerlink" href="#inheritance" title="Permalink to this headline">¶</a></h2>
+<h3>Inheritance<a class="headerlink" href="#inheritance" title="Permalink to this headline">¶</a></h3>
 </div>
 <div class="section" id="post-processing">
-<h2>Post Processing<a class="headerlink" href="#post-processing" title="Permalink to this headline">¶</a></h2>
+<h3>Post Processing<a class="headerlink" href="#post-processing" title="Permalink to this headline">¶</a></h3>
+</div>
 </div>
 </div>
 
@@ -144,9 +198,17 @@ In particular this can be:</p>
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Tutorial</a><ul>
-<li><a class="reference internal" href="#basic-script">Basic Script</a></li>
+<li><a class="reference internal" href="#basics">Basics</a><ul>
+<li><a class="reference internal" href="#the-script">The script</a></li>
+<li><a class="reference internal" href="#the-submission-process">The submission process</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#parameter-space">Parameter Space</a></li>
+<li><a class="reference internal" href="#advanced-topics">Advanced Topics</a><ul>
 <li><a class="reference internal" href="#inheritance">Inheritance</a></li>
 <li><a class="reference internal" href="#post-processing">Post Processing</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
