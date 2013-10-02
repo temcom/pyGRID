@@ -22,11 +22,11 @@ If you don't have root privileges on the cluster and you want to install pyGRID 
 
 Transfer the pyGRID archive file on the cluster and from a terminal run
 ```
-$ tar -xzvf pyGRID-0.1.2.tar.gz
-$ cd pyGRID-0.1.2
+$ tar -xzvf pyGRID-0.2.tar.gz
+$ cd pyGRID-0.2
 $ python setup.py develop --prefix=~
 ```
-where `0.1.2` is the current version number of pyGRID.
+where `0.2` is the current version number of pyGRID.
 
 From now on you can run pyGRID by simply typing `pyGRID` from anywhere in the cluster.
 
