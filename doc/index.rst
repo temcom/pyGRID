@@ -6,7 +6,7 @@ pyGRID
 **pyGRID** is a collection of Python utilities to help interface with *Sun Grid Engine*.
 
 *pyGRID* is based on `PySGE <https://github.com/jiahao/PySGE>`_. It allows the user
-to define to submit jobs to a queue manager from a Python script or an externally defined
+to define and submit jobs to a queue manager from a Python script or an externally defined
 file.
 
 *pyGRID* tries to conform to the *qsub* options syntax as much as possbile, making the
