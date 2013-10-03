@@ -100,18 +100,19 @@ In order to submit the job we have just defined just type
 
 ::
 
-    pyGRID -f basicTest.xml -s basicJob -b
+    pyGRID basicTest.xml -s basicJob -b
 
 in the terminal in the same folder of the *basicTest.xml* file. The job will be submitted 
 by pyGRID to the queue manager. You can check its status with ``qstat`` which list your
 currently active or queued jobs. Once *basicJob* finishes its output and error files will
 be written in the current directory.
 
-pyGRID command line options can be divided in three groups:
+pyGRID command line has a required argument and optional arguments that can be divided in
+two groups:
 
-* XML file option. This option is Required.
-    * ``-f <file_path>`` : specifies the path of the file to load.
-* Simulation options. These are mutually exlusive and at least one is Required.
+* XML file. **Required argument**
+    * ``<file>`` : specifies the path of the file to load.
+* Simulation options. These are mutually exlusive.
     * ``-s <job_name>`` : specifies the name of the simulation to load from the XML file.
     * ``-a`` : loads all the simulations in the file.
 * Action options. Tell pyGRID which action to perform woth the specified simulation. These are mutually exclusive.

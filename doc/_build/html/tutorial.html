@@ -133,24 +133,25 @@ In particular this can be:</p>
 <div class="section" id="the-submission-process">
 <h3>The submission process<a class="headerlink" href="#the-submission-process" title="Permalink to this headline">¶</a></h3>
 <p>In order to submit the job we have just defined just type</p>
-<div class="highlight-python"><pre>pyGRID -f basicTest.xml -s basicJob -b</pre>
+<div class="highlight-python"><pre>pyGRID basicTest.xml -s basicJob -b</pre>
 </div>
 <p>in the terminal in the same folder of the <em>basicTest.xml</em> file. The job will be submitted
 by pyGRID to the queue manager. You can check its status with <tt class="docutils literal"><span class="pre">qstat</span></tt> which list your
 currently active or queued jobs. Once <em>basicJob</em> finishes its output and error files will
 be written in the current directory.</p>
-<p>pyGRID command line options can be divided in three groups:</p>
+<p>pyGRID command line has a required argument and optional arguments that can be divided in
+two groups:</p>
 <ul>
 <li><dl class="first docutils">
-<dt>XML file option. This option is Required.</dt>
+<dt>XML file. <strong>Required argument</strong></dt>
 <dd><ul class="first last simple">
-<li><tt class="docutils literal"><span class="pre">-f</span> <span class="pre">&lt;file_path&gt;</span></tt> : specifies the path of the file to load.</li>
+<li><tt class="docutils literal"><span class="pre">&lt;file&gt;</span></tt> : specifies the path of the file to load.</li>
 </ul>
 </dd>
 </dl>
 </li>
 <li><dl class="first docutils">
-<dt>Simulation options. These are mutually exlusive and at least one is Required.</dt>
+<dt>Simulation options. These are mutually exlusive.</dt>
 <dd><ul class="first last simple">
 <li><tt class="docutils literal"><span class="pre">-s</span> <span class="pre">&lt;job_name&gt;</span></tt> : specifies the name of the simulation to load from the XML file.</li>
 <li><tt class="docutils literal"><span class="pre">-a</span></tt> : loads all the simulations in the file.</li>
