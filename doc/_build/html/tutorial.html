@@ -1,3 +1,4 @@
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -13,7 +14,7 @@
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    './',
+        URL_ROOT:    '',
         VERSION:     '0.2.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
@@ -125,7 +126,7 @@ will be included verbatim at the end of the bash script and can contain any vali
 In particular this can be:</p>
 <ul class="simple">
 <li>the path of an executable to be run on the cluster</li>
-<li>any bash command to run a python or matlab script on the cluster, e.g. &#8220;/usr/local/bin/matlab -nojvm -nodisplay -r matlab_job&#8221;</li>
+<li>any bash command to run a python or matlab script on the cluster, e.g. <em>&#8220;/usr/local/bin/matlab -nojvm -nodisplay -r matlab_job&#8221;</em></li>
 <li>any amount of bash code to manipulate files, create or delete folders, print environment variables etc.</li>
 </ul>
 </div>
@@ -162,7 +163,7 @@ be written in the current directory.</p>
 <dd><ul class="first last simple">
 <li><tt class="docutils literal"><span class="pre">-w</span></tt> : write the shell script for the simulation.</li>
 <li><tt class="docutils literal"><span class="pre">-b</span></tt> : write the shell script and submit a job for every combination of the parameters of the simulation</li>
-<li><tt class="docutils literal"><span class="pre">-c</span></tt> : scan the output sctream of finished jobs and detect the crashed ones. The JOB_ID and TASK_ID of the crashed job is saved in the .grid auxilliary file.</li>
+<li><tt class="docutils literal"><span class="pre">-c</span></tt> : scan the output sctream of finished jobs and detect the crashed ones. The <em>JOB_ID</em> and <em>TASK_ID</em> of the crashed job is saved in an auxilliary file with extension <tt class="docutils literal"><span class="pre">.grid</span></tt>.</li>
 <li><tt class="docutils literal"><span class="pre">-r</span></tt> : resubmit crashed jobs.</li>
 </ul>
 </dd>
@@ -174,16 +175,143 @@ be written in the current directory.</p>
 </div>
 <div class="section" id="parameter-space">
 <h2>Parameter Space<a class="headerlink" href="#parameter-space" title="Permalink to this headline">¶</a></h2>
-<p><strong>Documentation coming soon.</strong></p>
+<p>Some simulations require to span a parameter space and submitting jobs for every
+combination of parameters in <em>qsub</em> can be tedious. <em>pyGRID</em> streamlines the process and
+automatically submit for you a job for each combination of the parameters.</p>
+<p>Let&#8217;s look at the following script:</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="cp">&lt;?xml version=&quot;1.0&quot;?&gt;</span>
+<span class="nt">&lt;simulations&gt;</span>
+
+    <span class="nt">&lt;sim_element</span> <span class="na">N=</span><span class="s">&quot;parSpace&quot;</span><span class="nt">&gt;</span>
+        <span class="nt">&lt;S&gt;</span>/bin/bash<span class="nt">&lt;/S&gt;</span>
+        <span class="nt">&lt;j&gt;</span>y<span class="nt">&lt;/j&gt;</span>
+        <span class="nt">&lt;cwd</span> <span class="nt">/&gt;</span>
+
+        <span class="nt">&lt;parameters&gt;</span>
+            <span class="nt">&lt;parameter</span> <span class="na">name=</span><span class="s">&quot;omega&quot;</span><span class="nt">&gt;</span> 1:3:10 <span class="nt">&lt;/parameter&gt;</span>
+            <span class="nt">&lt;parameter</span> <span class="na">name=</span><span class="s">&quot;Amp&quot;</span><span class="nt">&gt;</span> 1.0 2.0:3:6.0 10.0 <span class="nt">&lt;/parameter&gt;</span>
+        <span class="nt">&lt;/parameters&gt;</span>
+        <span class="nt">&lt;code&gt;</span>
+            echo &quot;Parameter space example&quot;
+            echo $omega
+            echo $Amp
+        <span class="nt">&lt;/code&gt;</span>
+        <span class="nt">&lt;o&gt;</span>$JOB_NAME.$JOB_ID.$PAR_omega.$PAR_Amp<span class="nt">&lt;/o&gt;</span>
+    <span class="nt">&lt;/sim_element&gt;</span>
+
+<span class="nt">&lt;/simulations&gt;</span>
+</pre></div>
+</div>
+<p>We introduced a few new things in this script. The most important is the <tt class="docutils literal"><span class="pre">&lt;parameters&gt;</span></tt>
+element which contains the definition of the parameters we need in the simulation.</p>
+<p>Each parameter is defined with a <tt class="docutils literal"><span class="pre">&lt;parameter</span> <span class="pre">name=&quot;...&quot;&gt;</span></tt> element that requires a
+<tt class="docutils literal"><span class="pre">name</span></tt> attribute identifying it. Inside the <em>parameter</em> element we define the values
+we want it to assume. At the moment <em>pyGRID</em> accepts two notations for this:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">A:N:B</span></tt> which produces <em>N</em> evenly distributed values in the <em>A-B</em> interval.</li>
+<li><tt class="docutils literal"><span class="pre">A</span> <span class="pre">B</span> <span class="pre">C</span></tt>, a simple list of values.</li>
+</ul>
+<p>The two notations can easily be mixed as you see in</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;parameter</span> <span class="na">name=</span><span class="s">&quot;Amp&quot;</span><span class="nt">&gt;</span> 1.0 2.0:3:6.0 10.0 <span class="nt">&lt;/parameter&gt;</span>
+</pre></div>
+</div>
+<p>from the script above.</p>
+<p>While submitting a job, <em>pyGRID</em> pass the current combination of parameter values to the
+queue manager as <em>ENVIRONMENT VARIABLES</em> whose value can be accessed through the name
+<tt class="docutils literal"><span class="pre">$&lt;parameter_name&gt;</span></tt>. In the example above</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;code&gt;</span>
+    echo &quot;Parameter space example&quot;
+    echo $omega
+    echo $Amp
+<span class="nt">&lt;/code&gt;</span>
+</pre></div>
+</div>
+<p>the code will access the current values of the parameters for this job and output it.</p>
+<p>Finally, the values of the paramater can also be used in the filename for the output and
+error streams of the job. These values can be accessed with the syntax
+<tt class="docutils literal"><span class="pre">$PAR_&lt;parameter_name&gt;</span></tt>. By specifying</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;o&gt;</span>$JOB_NAME.$JOB_ID.$PAR_omega.$PAR_Amp<span class="nt">&lt;/o&gt;</span>
+</pre></div>
+</div>
+<p><em>pyGRID</em> will tell <em>qsub</em> to create output file names where <tt class="docutils literal"><span class="pre">$PAR_omega</span></tt> and
+<tt class="docutils literal"><span class="pre">$PAR_Amp</span></tt> is substituted with the values of the parameter for a job.</p>
 </div>
 <div class="section" id="advanced-topics">
 <h2>Advanced Topics<a class="headerlink" href="#advanced-topics" title="Permalink to this headline">¶</a></h2>
-<p><strong>Documentation coming soon.</strong></p>
 <div class="section" id="inheritance">
 <h3>Inheritance<a class="headerlink" href="#inheritance" title="Permalink to this headline">¶</a></h3>
+<p>In order to avoid to redefine the same options over and over for every job <em>pyGRID</em>
+allows a job to inherit its options from another job.</p>
+<p>Consider the script</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="cp">&lt;?xml version=&quot;1.0&quot;?&gt;</span>
+<span class="nt">&lt;simulations&gt;</span>
+
+    <span class="nt">&lt;sim_element</span> <span class="na">N=</span><span class="s">&quot;basicJob&quot;</span><span class="nt">&gt;</span>
+        <span class="nt">&lt;S&gt;</span>/bin/bash<span class="nt">&lt;/S&gt;</span>
+        <span class="nt">&lt;j&gt;</span>y<span class="nt">&lt;/j&gt;</span>
+        <span class="nt">&lt;cwd</span> <span class="nt">/&gt;</span>
+        <span class="nt">&lt;code&gt;</span> echo &quot;Basic Job&quot; <span class="nt">&lt;/code&gt;</span>
+    <span class="nt">&lt;/sim_element&gt;</span>
+
+    <span class="nt">&lt;sim_element</span> <span class="na">N=</span><span class="s">&quot;inheritedJob&quot;</span> <span class="na">inherit=</span><span class="s">&quot;basicJob&quot;</span><span class="nt">&gt;</span>
+        <span class="nt">&lt;j&gt;</span> n <span class="nt">&lt;/j&gt;</span>
+        <span class="nt">&lt;t&gt;</span> 1-10 <span class="nt">&lt;/t&gt;</span>
+    <span class="nt">&lt;/sim_element&gt;</span>
+
+<span class="nt">&lt;/simulations&gt;</span>
+</pre></div>
+</div>
+<p>In <tt class="docutils literal"><span class="pre">&lt;sim_element</span> <span class="pre">N=&quot;inheritedJob&quot;</span> <span class="pre">inherit=&quot;basicJob&quot;&gt;</span></tt> we have introduced the attribute
+<strong>inherit</strong> which tells <em>pyGRID</em> to load the options of <em>basicJob</em> first and then add or
+overwrite them with the options of <em>inheritedJob</em>.</p>
+<p>In case <em>inheritedJob</em> will overwrite the <em>j</em> option from <em>basicJob</em> and add the <em>t</em>
+option which has the effect to make it an array job.</p>
 </div>
 <div class="section" id="post-processing">
 <h3>Post Processing<a class="headerlink" href="#post-processing" title="Permalink to this headline">¶</a></h3>
+<p>Sometimes when running array jobs or simulations that span a parameter space waiting for
+all the jobs to finish before doing the data analysis is tedious. For this reason <em>pyGRID</em>
+make it easy to define dependencies between jobs so that when a group of simulations
+finishes another job is automatically executed.</p>
+<p>Look at the script</p>
+<div class="highlight-xml"><div class="highlight"><pre><span class="cp">&lt;?xml version=&quot;1.0&quot;?&gt;</span>
+<span class="nt">&lt;simulations&gt;</span>
+
+    <span class="nt">&lt;sim_element</span> <span class="na">N=</span><span class="s">&quot;parSpace&quot;</span> <span class="na">post_processing=</span><span class="s">&quot;postProcJob&quot;</span><span class="nt">&gt;</span>
+        <span class="nt">&lt;S&gt;</span>/bin/bash<span class="nt">&lt;/S&gt;</span>
+        <span class="nt">&lt;j&gt;</span>y<span class="nt">&lt;/j&gt;</span>
+        <span class="nt">&lt;cwd</span> <span class="nt">/&gt;</span>
+
+        <span class="nt">&lt;parameters&gt;</span>
+            <span class="nt">&lt;parameter</span> <span class="na">name=</span><span class="s">&quot;omega&quot;</span><span class="nt">&gt;</span> 1:3:10 <span class="nt">&lt;/parameter&gt;</span>
+            <span class="nt">&lt;parameter</span> <span class="na">name=</span><span class="s">&quot;Amp&quot;</span><span class="nt">&gt;</span> 1.0 2.0:3:6.0 10.0 <span class="nt">&lt;/parameter&gt;</span>
+        <span class="nt">&lt;/parameters&gt;</span>
+        <span class="nt">&lt;code&gt;</span>
+            echo &quot;Parameter space example&quot;
+            echo $omega
+            echo $Amp
+        <span class="nt">&lt;/code&gt;</span>
+        <span class="nt">&lt;o&gt;</span>$JOB_NAME.$JOB_ID.$PAR_omega.$PAR_Amp<span class="nt">&lt;/o&gt;</span>
+    <span class="nt">&lt;/sim_element&gt;</span>
+
+    <span class="nt">&lt;sim_element</span> <span class="na">N=</span><span class="s">&quot;postProcJob&quot;</span><span class="nt">&gt;</span>
+        <span class="nt">&lt;cwd</span> <span class="nt">/&gt;</span>
+        <span class="nt">&lt;S&gt;</span>/bin/bash<span class="nt">&lt;/S&gt;</span>
+        <span class="nt">&lt;j&gt;</span>y<span class="nt">&lt;/j&gt;</span>
+        <span class="nt">&lt;code&gt;</span> echo &quot;All of the parSpace jobs have finished&quot; <span class="nt">&lt;/code&gt;</span>
+    <span class="nt">&lt;/sim_element&gt;</span>
+
+<span class="nt">&lt;/simulations&gt;</span>
+</pre></div>
+</div>
+<p>where we have introduced the attribute <strong>post_processing</strong>, containing the name of
+another <em>sim_element</em> in the script. When you specify <strong>post_processing</strong> <em>pyGRID</em> will
+submit all the jobs for <em>parSpace</em> first and then submit the <em>postProcJob</em> telling
+<em>qsub</em> not to execute it until all the <em>parSpace</em> jobs have finished.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">The post_processing job will not execute if any of the jobs it depends on exits because of an error.</p>
+</div>
 </div>
 </div>
 </div>

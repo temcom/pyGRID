@@ -3,7 +3,7 @@
 from setuptools import setup, find_packages
 
 setup(name="pyGRID",
-      version="0.2.1",
+      version="0.2.3",
       license="GPLv2",
       keywords="scientific/engineering simulation",
       platforms="OS Independent",
@@ -25,12 +25,8 @@ setup(name="pyGRID",
             ],
       },
       test_suite = 'nose.collector',
-      setup_requires=[
-        'nose>=1.1.2',
-        'mock>=0.8',
-      ],
       install_requires=[
-        'numpy>=1.6.1',
+        'numpy>=1.4.1',
       ],
       extras_require={
         'docs': 'sphinx',

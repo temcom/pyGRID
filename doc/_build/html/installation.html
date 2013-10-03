@@ -1,3 +1,4 @@
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -13,7 +14,7 @@
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    './',
+        URL_ROOT:    '',
         VERSION:     '0.2.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
@@ -61,7 +62,26 @@
             
   <div class="section" id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
-<p>Not documented yet.</p>
+<p>If you don&#8217;t have root privileges on the cluster, you&#8217;ll have to install <em>pyGRID</em> in your
+home directory.</p>
+<p>For this follow these steps:</p>
+<ul>
+<li><p class="first">Create the path <tt class="docutils literal"><span class="pre">~/lib/python2.6/site-packages</span></tt> (assuming you installed python version 2.6) in your home directory.</p>
+</li>
+<li><p class="first">Create the <tt class="docutils literal"><span class="pre">~/bin</span></tt> path.</p>
+</li>
+<li><p class="first">Add <tt class="docutils literal"><span class="pre">export</span> <span class="pre">PYTHONPATH=~/lib/python2.6/site-packages:$PYTHONPATH</span></tt> and <tt class="docutils literal"><span class="pre">export</span> <span class="pre">PATH=~/bin:$PATH</span></tt> to your .bashrc file (and run <tt class="docutils literal"><span class="pre">.</span> <span class="pre">~/.bashrc</span></tt>).</p>
+</li>
+<li><p class="first">Install <em>pyGRID</em> using</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">easy_install</span> <span class="o">--</span><span class="n">prefix</span><span class="o">=~</span> <span class="n">pyGRID</span>
+</pre></div>
+</div>
+</li>
+</ul>
+<p>If you have root privilegies instead and you want to install <em>pyGRID</em> for every user
+simply type</p>
+<div class="highlight-python"><pre>easy_install pyGRID</pre>
+</div>
 </div>
 
 
