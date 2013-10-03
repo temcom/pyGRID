@@ -3,7 +3,7 @@
 from setuptools import setup, find_packages
 
 setup(name="pyGRID",
-      version="0.2.3",
+      version="0.2.5",
       license="GPLv2",
       keywords="scientific/engineering simulation",
       platforms="OS Independent",

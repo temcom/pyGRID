@@ -10,6 +10,7 @@ import argparse
 import itertools
 import subprocess
 import re
+import sys
 import xml.etree.ElementTree as ET
 from numpy import linspace
 from xml.dom import minidom
@@ -605,7 +606,7 @@ class pyGRID:
 def main():
     # define the arguments for the python script
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--file",help="Specify which file pyGRID should use to load definitions of the simulations")
+    parser.add_argument("file",help="Specify which file pyGRID should use to load definitions of the simulations")
     
     simulation_group = parser.add_mutually_exclusive_group()
     simulation_group.add_argument("-s", "--simulation",help="The name of the simulation to use")
@@ -616,6 +617,10 @@ def main():
     action_group.add_argument("-b","--submit",action='store_true',help="If submit is specified then pyGRID will submit the job otherwise it will simply create the bash script")
     action_group.add_argument("-c","--crashes",action='store_true',help="pyGRID will scan the stream files for a job and determine the ones that crashed")
     action_group.add_argument("-r","--resubmit",action='store_true',help="pyGRID will resubmit the crashed jobs parsed from stream files")
+
+    if len(sys.argv) < 2:
+        parser.print_help()
+        sys.exit(1)
 
     # parse the arguments from the command line
     args = parser.parse_args()
