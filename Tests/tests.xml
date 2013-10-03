@@ -6,7 +6,7 @@
 	<code> echo "Basic Test" </code> 
     <M>sabbatini@physics.uq.edu.au</M>
     <m>es</m>
-    <o>$JOB_NAME.$JOB_ID.$TASK_ID</o>
+    <o>$JOB_NAME.$JOB_ID</o>
     <S>/bin/bash</S>
     <j>y</j>
     <cwd />
